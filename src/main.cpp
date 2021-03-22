@@ -1,44 +1,34 @@
-#include <sstream>
-
-#include <seqan3/argument_parser/all.hpp>
+#include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/core/debug_stream.hpp>
 
-#include "fastq_conversion.hpp"
+#include "IntervalNode.hpp"
 
-int main(int argc, char ** argv)
+int main()
 {
-    seqan3::argument_parser parser{"Fastq-to-Fasta-Converter", argc, argv};
+    using my_fields = seqan3::fields<seqan3::field::id,
+                                     seqan3::field::ref_id,
+                                     seqan3::field::ref_offset,
+                                     seqan3::field::cigar>;
 
-    // Declarations for argument parser
-    std::filesystem::path fastq_file{};
-    std::filesystem::path output_file{};
-    bool verbose = false;
+    seqan3::debug_stream << "Reading SAM file.\n";
+    std::filesystem::path input_path{"/home/kim_j/testFiles/simulated_reads/simulated_chr1_small_golden.bam"};
+    seqan3::sam_file_input input{input_path, my_fields{}};
 
-    // Parser
-    parser.info.author = "SeqAn-Team"; // give parser some infos
-    parser.info.version = "1.0.0";
-    parser.add_positional_option(fastq_file, "Please provide a fastq file.",
-                                 seqan3::input_file_validator{{"fq","fastq"}}); // Takes a fastq file and validates it
-    //output path as option, otherwise output is printed
-    parser.add_option(output_file, 'o', "output", "The file for fasta output. Default: stdout");
-    parser.add_flag(verbose, 'v', "verbose", "Give more detailed information here."); // example for a flag
-
-    try
+    seqan3::debug_stream << "Putting reads into vector.\n";
+    std::vector<std::string> records{};
+    for (auto & r : input)
     {
-         parser.parse();                                                  // trigger command line parsing
-    }
-    catch (seqan3::argument_parser_error const & ext)                     // catch user errors
-    {
-        seqan3::debug_stream << "Parsing error. " << ext.what() << "\n"; // give error message
-        return -1;
+        std::string id = std::get<0>(r);
+        records.push_back(id);
     }
 
-    convert_fastq(fastq_file, output_file); // Call fastq to fasta converter
+    seqan3::debug_stream << "Creating Node.\n";
+    IntervalNode root{NULL, NULL, records};
 
-    if (verbose) // if flag is set
-        seqan3::debug_stream << "Conversion was a success. Congrats!\n";
+    std::vector<std::string> result = root.get_records();
 
+    seqan3::debug_stream << result << std::endl;
 
-
+    root.construct_tree(input);
     return 0;
 }
