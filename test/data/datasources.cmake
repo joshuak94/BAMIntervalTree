@@ -3,6 +3,6 @@ cmake_minimum_required (VERSION 3.8)
 include (cmake/app_datasources.cmake)
 
 # copies file to <build>/data/in.fastq
-declare_datasource (FILE in.fastq
-                    URL ${CMAKE_SOURCE_DIR}/test/data/in.fastq
-                    URL_HASH SHA256=6e30fc35f908a36fe0c68a7a35c47f51f9570da16622fb0c072a20e6a9ba5b3e)
+declare_datasource (FILE simulated_chr1_small_golden.bam
+                    URL ${CMAKE_SOURCE_DIR}/test/data/simulated_chr1_small_golden.bam
+                    URL_HASH SHA256=c580e7caf6baf0944028a0ba657d7095b8dcb77866bbd9b60aff64b9f43a4f54)
