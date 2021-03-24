@@ -6,6 +6,8 @@
 struct CmdOptions
 {
     std::filesystem::path input_path{};
+    int32_t start{};
+    int32_t end{};
 };
 
 void initialize_argument_parser(seqan3::argument_parser & parser, CmdOptions & options)
@@ -24,6 +26,8 @@ void initialize_argument_parser(seqan3::argument_parser & parser, CmdOptions & o
     parser.add_option(options.input_path, 'i', "input_bam",
                       "Input a sorted BAM/SAM file.", seqan3::option_spec::standard,
                       seqan3::input_file_validator{{"sam", "bam"}});
+    parser.add_option(options.start, 's', "start", "Start of queried interval");
+    parser.add_option(options.end, 'e', "end", "End of queried interval");
 }
 
 int main(int argc, char ** argv)
@@ -76,6 +80,15 @@ int main(int argc, char ** argv)
     construct_tree(root, records);
 
     root->print(0);
+
+    if (options.start && options.end)
+    {
+        seqan3::debug_stream << "Search: " << options.start << " " << options.end << "\n";
+        std::vector<Record> results{};
+        overlap(root, options.start, options.end, results);
+        for (auto & r: results)
+            seqan3::debug_stream << r.start << " " << r.end << "\n";
+    }
     // std::vector<Record> result = root.get_records();
     //
     // for (auto r : result)
