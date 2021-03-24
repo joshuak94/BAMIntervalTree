@@ -77,10 +77,12 @@ int32_t calculate_median(std::vector<Record> const & records_i)
 
 void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> const & records_i)
 {
-    if (!node)
+    if (records_i.empty())
     {
-        node = std::make_unique<IntervalNode>();
+        return;
     }
+    // Set node to an empty IntervalNode pointer.
+    node = std::make_unique<IntervalNode>();
 
     // Calculate and set median.
     node->set_median(calculate_median(records_i));
@@ -119,14 +121,8 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     }
 
     // Set left and right subtrees.
-    if (!lRecords.empty())
-    {
-        construct_tree(node->get_left_node(), lRecords);
-    }
-    if (!rRecords.empty())
-    {
-        construct_tree(node->get_right_node(), rRecords);
-    }
+    construct_tree(node->get_left_node(), lRecords);
+    construct_tree(node->get_right_node(), rRecords);
     return;
 }
 
