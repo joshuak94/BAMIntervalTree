@@ -14,10 +14,10 @@ using sam_file_input_t = seqan3::sam_file_input<seqan3::sam_file_input_default_t
                                                 my_fields,
                                                 seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
 private:
-    bool isLeaf{};
+    bool isLeaf{false};
     std::vector<Record> records{};
-    IntervalNode * lNode{};
-    IntervalNode * rNode{};
+    std::unique_ptr<IntervalNode> lNode{nullptr};
+    std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
     /*!\name Constructors, destructor and assignment
      * \{
@@ -28,24 +28,19 @@ public:
     IntervalNode & operator=(IntervalNode const &)  = default; //!< Defaulted.
     IntervalNode & operator=(IntervalNode &&)       = default; //!< Defaulted.
     ~IntervalNode()                                 = default; //!< Defaulted.
-
-    IntervalNode(IntervalNode * lNode_i, IntervalNode * rNode_i) :
-                 lNode{std::move(lNode_i)}, rNode{std::move(rNode_i)} {}
      //!\}
 
-     void set_left_node(IntervalNode * new_node);
+     std::unique_ptr<IntervalNode> & get_left_node();
 
-     void set_right_node(IntervalNode * new_node);
-
-     IntervalNode * get_left_node();
-
-     IntervalNode * get_right_node();
+     std::unique_ptr<IntervalNode> & get_right_node();
 
      std::vector<Record> & get_records();
 
-     IntervalNode * construct_tree(std::vector<Record> & records_i);
+     void set_is_leaf();
 
      void print(int32_t level);
 
-     int32_t calculate_median(std::vector<Record> & records_i);
 };
+int32_t calculate_median(std::vector<Record> const & records_i);
+
+void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> const & records_i);

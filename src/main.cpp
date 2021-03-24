@@ -3,8 +3,47 @@
 
 #include "IntervalNode.hpp"
 
-int main()
+struct CmdOptions
 {
+    std::filesystem::path input_path{};
+};
+
+void initialize_argument_parser(seqan3::argument_parser & parser, CmdOptions & options)
+{
+    parser.info.author = "Joshua Kim, Mitra Darvish";
+    parser.info.app_name = "BAMIntervalTree";
+    parser.info.man_page_title = "An Interval Tree indexer for BAM/SAM files.";
+    parser.info.short_description = "Create an Interval Tree over an aligment file for quick range queries.";
+    parser.info.version = "0.0.1";
+    parser.info.date = "24-03-2021";    // last update
+    parser.info.email = "kim_j@molgen.mpg.de";
+    parser.info.long_copyright = "long_copyright";
+    parser.info.short_copyright = "short_copyright";
+    parser.info.url = "https://github.com/joshuak94/BAMIntervalTree/";
+
+    parser.add_option(options.input_path, 'i', "input_bam",
+                      "Input a sorted BAM/SAM file.", seqan3::option_spec::standard,
+                      seqan3::input_file_validator{{"sam", "bam"}});
+}
+
+int main(int argc, char ** argv)
+{
+    seqan3::argument_parser my_parser{"BAMIntervalTree", argc, argv};
+    CmdOptions options{};
+
+    initialize_argument_parser(my_parser, options);
+
+    // Parse the given arguments and catch possible errors.
+    try
+    {
+        my_parser.parse();                                               // trigger command line parsing
+    }
+    catch (seqan3::argument_parser_error const & ext)                   // catch user errors
+    {
+        seqan3::debug_stream << "[Error] " << ext.what() << '\n';       // customise your error message
+        return -1;
+    }
+
     using my_fields = seqan3::fields<seqan3::field::id,
                                      seqan3::field::ref_id,
                                      seqan3::field::ref_offset,
@@ -12,8 +51,7 @@ int main()
                                      seqan3::field::seq>;
 
     seqan3::debug_stream << "Reading SAM file.\n";
-    std::filesystem::path input_path{"/home/kim_j/development/BAMIntervalTree/test/data/simulated_chr1_small_golden.bam"};
-    seqan3::sam_file_input input{input_path, my_fields{}};
+    seqan3::sam_file_input input{options.input_path, my_fields{}};
 
     seqan3::debug_stream << "Extracting info from reads\n";
     // Calculate total length of genome.
@@ -32,10 +70,10 @@ int main()
     }
 
     seqan3::debug_stream << "Creating Node.\n";
-    IntervalNode root{NULL, NULL};
+    std::unique_ptr<IntervalNode> root = std::make_unique<IntervalNode>();
 
 
-    root.construct_tree(records);
+    construct_tree(root, records);
 
     // root.print(0);
     // std::vector<Record> result = root.get_records();
