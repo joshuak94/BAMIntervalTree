@@ -7,7 +7,6 @@ struct Record
 
 struct RecordComparatorStart
 {
-    // Compare 2 Player objects using name
     bool operator ()(const Record & record1, const Record & record2)
     {
         if(record1.start == record2.start)
@@ -18,10 +17,9 @@ struct RecordComparatorStart
 
 struct RecordComparatorEnd
 {
-    // Compare 2 Player objects using name
     bool operator ()(const Record & record1, const Record & record2)
     {
-        if(record1.end== record2.end)
+        if(record1.end == record2.end)
             return record1.start > record2.start;
         return record1.end > record2.end;
     }

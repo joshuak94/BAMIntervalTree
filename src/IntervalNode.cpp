@@ -135,7 +135,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
 
     if (root->get_median() >= start && root->get_median() <= end)
     {
-        for(auto & r: root->get_records())
+        for (auto & r : root->get_records())
         {
             results.push_back(r);
         }
@@ -145,7 +145,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
     else if (end < root->get_median())
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorStart());
-        for(auto & r: root->get_records())
+        for (auto & r : root->get_records())
         {
             if (r.start <= end)
             {
@@ -161,7 +161,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
     else if (start > root->get_median())
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorEnd());
-        for(auto & r: root->get_records())
+        for (auto & r : root->get_records())
         {
             if (r.end >= start)
             {
