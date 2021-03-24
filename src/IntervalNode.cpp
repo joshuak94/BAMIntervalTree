@@ -30,25 +30,24 @@ void IntervalNode::set_median(int32_t m)
     this->median = m;
 }
 
-// TODO: Fix the printing.
 void IntervalNode::print(int32_t level)
 {
     seqan3::debug_stream << "Level: " << level << '\n' << "Reads: ";
     for (auto & r : records)
     {
-        seqan3::debug_stream << "[" << r.start << ", " << r.end << "], ";
+        seqan3::debug_stream << "[" << r.start << ", " << r.end << "]";
     }
     seqan3::debug_stream << "\n\n";
 
-    if (!lNode)
+    if (lNode)
     {
         seqan3::debug_stream << "left node... \n";
-        (*lNode).print(level + 1);
+        lNode->print(level + 1);
     }
-    if (!rNode)
+    if (rNode)
     {
         seqan3::debug_stream << "right node... \n";
-        (*rNode).print(level + 1);
+        rNode->print(level + 1);
     }
 }
 

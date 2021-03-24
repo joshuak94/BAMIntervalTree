@@ -75,7 +75,7 @@ int main(int argc, char ** argv)
 
     construct_tree(root, records);
 
-    // root.print(0);
+    root->print(0);
     // std::vector<Record> result = root.get_records();
     //
     // for (auto r : result)
