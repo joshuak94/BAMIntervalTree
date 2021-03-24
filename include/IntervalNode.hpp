@@ -35,13 +35,13 @@ public:
 
      std::unique_ptr<IntervalNode> & get_right_node();
 
-     int32_t & get_median();
+     int32_t const & get_median();
 
      std::vector<Record> & get_records();
 
      void set_is_leaf();
 
-     void set_median(int32_t m);
+     void set_median(int32_t const & m);
 
      void print(int32_t level);
 
