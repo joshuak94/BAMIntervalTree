@@ -50,4 +50,4 @@ int32_t calculate_median(std::vector<Record> const & records_i);
 
 void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> const & records_i);
 
-std::vector<Record> overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end);
+void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, std::vector<Record> & results);

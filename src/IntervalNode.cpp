@@ -126,8 +126,52 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     return;
 }
 
-std::vector<Record> overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end)
+void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, std::vector<Record> & results)
 {
-    std::vector<Record> results{};
-    return results;
+    if (!root)
+    {
+        return;
+    }
+
+    if (root->get_median() >= start && root->get_median() <= end)
+    {
+        for(auto & r: root->get_records())
+        {
+            results.push_back(r);
+        }
+        overlap(root->get_left_node(), start, end, results);
+        overlap(root->get_right_node(), start, end, results);
+    }
+    else if (end < root->get_median())
+    {
+        std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorStart());
+        for(auto & r: root->get_records())
+        {
+            if (r.start <= end)
+            {
+                results.push_back(r);
+            }
+            else
+            {
+                break;
+            }
+        }
+        overlap(root->get_left_node(), start, end, results);
+    }
+    else if (start > root->get_median())
+    {
+        std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorEnd());
+        for(auto & r: root->get_records())
+        {
+            if (r.end >= start)
+            {
+                results.push_back(r);
+            }
+            else
+            {
+                break;
+            }
+        }
+        overlap(root->get_right_node(), start, end, results);
+    }
 }
