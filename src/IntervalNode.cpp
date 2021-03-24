@@ -10,7 +10,7 @@ std::unique_ptr<IntervalNode> & IntervalNode::get_right_node()
     return rNode;
 }
 
-int32_t & IntervalNode::get_median()
+int32_t const & IntervalNode::get_median()
 {
     return median;
 }
@@ -25,7 +25,7 @@ void IntervalNode::set_is_leaf()
     this->isLeaf = true;
 }
 
-void IntervalNode::set_median(int32_t m)
+void IntervalNode::set_median(int32_t const & m)
 {
     this->median = m;
 }
@@ -90,19 +90,19 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     // Get reads which intersect median.
     std::vector<Record> lRecords{};
     std::vector<Record> rRecords{};
-    for (auto & r : records_i)
+    for (const auto & r : records_i)
     {
         if (node->get_median() < r.start) // Median is to the left of the read, so read is in right subtree.
         {
-            rRecords.push_back(r);
+            rRecords.push_back(std::move(r));
         }
         else if (node->get_median() >= r.start && node->get_median() <= r.end) // Median is within the read.
         {
-            node->get_records().push_back(r);
+            node->get_records().push_back(std::move(r));
         }
         else if (node->get_median() > r.end) // Median is to the right of the read, so read is in left subtree.
         {
-            lRecords.push_back(r);
+            lRecords.push_back(std::move(r));
         }
     }
     // seqan3::debug_stream << "Median: " << node->get_median() << ", Reads: ";
