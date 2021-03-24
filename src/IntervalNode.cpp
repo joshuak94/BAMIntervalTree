@@ -118,3 +118,9 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     }
     return;
 }
+
+std::vector<Record> overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end)
+{
+    std::vector<Record> results{};
+    return results;
+}
