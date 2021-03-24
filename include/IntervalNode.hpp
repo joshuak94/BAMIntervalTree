@@ -15,6 +15,7 @@ using sam_file_input_t = seqan3::sam_file_input<seqan3::sam_file_input_default_t
                                                 seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
 private:
     bool isLeaf{false};
+    int32_t median{};
     std::vector<Record> records{};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
@@ -34,9 +35,13 @@ public:
 
      std::unique_ptr<IntervalNode> & get_right_node();
 
+     int32_t & get_median();
+
      std::vector<Record> & get_records();
 
      void set_is_leaf();
+
+     void set_median(int32_t m);
 
      void print(int32_t level);
 

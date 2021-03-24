@@ -10,6 +10,11 @@ std::unique_ptr<IntervalNode> & IntervalNode::get_right_node()
     return rNode;
 }
 
+int32_t & IntervalNode::get_median()
+{
+    return median;
+}
+
 std::vector<Record> & IntervalNode::get_records()
 {
     return records;
@@ -19,6 +24,12 @@ void IntervalNode::set_is_leaf()
 {
     this->isLeaf = true;
 }
+
+void IntervalNode::set_median(int32_t m)
+{
+    this->median = m;
+}
+
 // TODO: Fix the printing.
 void IntervalNode::print(int32_t level)
 {
@@ -67,32 +78,33 @@ int32_t calculate_median(std::vector<Record> const & records_i)
 
 void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> const & records_i)
 {
-    // Calculate median.
-    int32_t median = calculate_median(records_i);
-
     if (!node)
     {
         node = std::make_unique<IntervalNode>();
     }
+
+    // Calculate and set median.
+    node->set_median(calculate_median(records_i));
+
     // Get reads which intersect median.
     std::vector<Record> lRecords{};
     std::vector<Record> rRecords{};
     for (auto & r : records_i)
     {
-        if (median < r.start) // Median is to the left of the read, so read is in right subtree.
+        if (node->get_median() < r.start) // Median is to the left of the read, so read is in right subtree.
         {
             rRecords.push_back(r);
         }
-        else if (median >= r.start && median <= r.end) // Median is within the read.
+        else if (node->get_median() >= r.start && node->get_median() <= r.end) // Median is within the read.
         {
             node->get_records().push_back(r);
         }
-        else if (median > r.end) // Median is to the right of the read, so read is in left subtree.
+        else if (node->get_median() > r.end) // Median is to the right of the read, so read is in left subtree.
         {
             lRecords.push_back(r);
         }
     }
-    // seqan3::debug_stream << "Median: " << median << ", Reads: ";
+    // seqan3::debug_stream << "Median: " << node->get_median() << ", Reads: ";
     // for (auto & r : node->get_records())
     // {
     //     seqan3::debug_stream << "[" << r.start << ", " << r.end << "], ";
