@@ -70,7 +70,7 @@ int main(int argc, char ** argv)
     }
 
     seqan3::debug_stream << "Creating Node.\n";
-    std::unique_ptr<IntervalNode> root = std::make_unique<IntervalNode>();
+    std::unique_ptr<IntervalNode> root(nullptr);
 
 
     construct_tree(root, records);
