@@ -1,10 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <filesystem>
-#include <cstdint>
-
 #include <seqan3/io/sam_file/input.hpp>
+
 struct Record
 {
     int32_t start, end, ref_id;
