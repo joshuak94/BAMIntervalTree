@@ -62,14 +62,10 @@ int32_t calculate_median(std::vector<Record> const & records_i)
     }
     std::sort(values.begin(), values.end());
     size_t size = values.size();
-    if (size % 2 == 0)
-    {
-      median = (values[size / 2 - 1] + values[size / 2]) / 2;
-    }
-    else
-    {
-      median = values[size / 2];
-    }
+
+     // The size of the vector values will always be an even number, therefore the median is determined by taking the
+     // mean of the two values in the middle. 
+     median = (values[size / 2 - 1] + values[size / 2]) / 2;
 
     return median;
 }
