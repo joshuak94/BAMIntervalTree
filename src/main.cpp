@@ -59,24 +59,9 @@ int main(int argc, char ** argv)
 
     seqan3::debug_stream << "Extracting info from reads\n";
 
-    // Calculate total length of genome.
-    size_t running_sum{0};
-    std::vector<size_t> cumulative_length{};
-    for (auto c : input.header().ref_id_info)
-    {
-        cumulative_length.push_back(running_sum);
-        running_sum += std::get<0>(c);
-    }
-
     std::vector<Record> records{};
-    for (auto & r : input)
-    {
-        int32_t ref_id = std::get<1>(r).value();
-        int32_t start = std::get<2>(r).value() + cumulative_length[ref_id];
-        int32_t end = std::get<2>(r).value() + std::get<4>(r).size() + cumulative_length[ref_id];
-        Record rec{start, end};
-        records.push_back(rec);
-    }
+    std::vector<uint32_t> cumulative_length{};
+    parse_file(options.input_path, cumulative_length, records);
 
     seqan3::debug_stream << "Creating Node.\n";
     std::unique_ptr<IntervalNode> root(nullptr);
