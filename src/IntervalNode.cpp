@@ -32,7 +32,7 @@ void IntervalNode::set_median(int32_t const & m)
 
 void IntervalNode::print(int32_t level)
 {
-    seqan3::debug_stream << "Level: " << level << '\n' << "Reads: ";
+    seqan3::debug_stream << "Level: " << level << '\n' << "Median: " << this->get_median() << '\n' << "Reads: ";
     for (auto & r : records)
     {
         seqan3::debug_stream << "[" << r.start << ", " << r.end << "]";
@@ -64,7 +64,7 @@ int32_t calculate_median(std::vector<Record> const & records_i)
     size_t size = values.size();
 
      // The size of the vector values will always be an even number, therefore the median is determined by taking the
-     // mean of the two values in the middle. 
+     // mean of the two values in the middle.
      median = (values[size / 2 - 1] + values[size / 2]) / 2;
 
     return median;
