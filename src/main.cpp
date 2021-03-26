@@ -59,22 +59,22 @@ int main(int argc, char ** argv)
 
     seqan3::debug_stream << "Extracting info from reads\n";
 
-    std::vector<Record> records{};
+    std::vector<bamit::Record> records{};
     std::vector<uint32_t> cumulative_length{};
-    parse_file(options.input_path, cumulative_length, records);
+    bamit::parse_file(options.input_path, cumulative_length, records);
 
     seqan3::debug_stream << "Creating Node.\n";
-    std::unique_ptr<IntervalNode> root(nullptr);
+    std::unique_ptr<bamit::IntervalNode> root(nullptr);
 
-    construct_tree(root, records);
+    bamit::construct_tree(root, records);
 
     root->print(0);
 
     if (options.start && options.end)
     {
         seqan3::debug_stream << "Search: " << options.start << " " << options.end << "\n";
-        std::vector<Record> results{};
-        overlap(root, options.start, options.end, results);
+        std::vector<bamit::Record> results{};
+        bamit::overlap(root, options.start, options.end, results);
         for (auto & r: results)
             seqan3::debug_stream << r.start << " " << r.end << "\n";
     }
