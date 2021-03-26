@@ -5,7 +5,8 @@
 #include "Record.hpp"
 
 // Recursive function to go through the tree and check the medians.
-void check_medians(std::unique_ptr<IntervalNode> & root, int level, int pos, std::vector<int32_t> & expected_medians)
+void check_medians(std::unique_ptr<bamit::IntervalNode> & root, int level, int pos,
+                   std::vector<int32_t> & expected_medians)
 {
     if (expected_medians[pow(2, level) - 1 + pos] > 0)
     {
@@ -31,13 +32,13 @@ TEST(tree_construct, simulated_chr1_small_golden)
                                      seqan3::field::cigar,
                                      seqan3::field::seq>;
 
-    std::vector<Record> records{};
+    std::vector<bamit::Record> records{};
     std::vector<uint32_t> cumulative_length{};
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
-    parse_file(input, cumulative_length, records);
+    bamit::parse_file(input, cumulative_length, records);
 
-    std::unique_ptr<IntervalNode> root(nullptr);
-    construct_tree(root, records);
+    std::unique_ptr<bamit::IntervalNode> root(nullptr);
+    bamit::construct_tree(root, records);
 
     // Test Tree
     std::vector<int32_t> expected_medians{944, 467, 1397, 257, 676, 1132, 1664, 140, 363, 571, 802, 1032, 1257,
@@ -55,13 +56,13 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
                                      seqan3::field::cigar,
                                      seqan3::field::seq>;
 
-    std::vector<Record> records{};
+    std::vector<bamit::Record> records{};
     std::vector<uint32_t> cumulative_length{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    parse_file(input, cumulative_length, records);
+    bamit::parse_file(input, cumulative_length, records);
 
-    std::unique_ptr<IntervalNode> root(nullptr);
-    construct_tree(root, records);
+    std::unique_ptr<bamit::IntervalNode> root(nullptr);
+    bamit::construct_tree(root, records);
 
 
     std::vector<int32_t> expected_medians{991, 502, 1611, 283, 824, 1276, 1821, 130, 388, 623, 909, 1142, 1505,
