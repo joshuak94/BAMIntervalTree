@@ -6,17 +6,12 @@
 
 namespace bamit
 {
+/*! The IntervalNode class stores a single node which is a part of an interval tree. It stores a list of
+ *  bamit::Record objects that intersect a given median, along with pointers to its left and right children.
+ */
 class IntervalNode
 {
-using my_fields = seqan3::fields<seqan3::field::id,
-                                 seqan3::field::ref_id,
-                                 seqan3::field::ref_offset,
-                                 seqan3::field::cigar>;
-using sam_file_input_t = seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
-                                                my_fields,
-                                                seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
 private:
-    bool isLeaf{false};
     int32_t median{};
     std::vector<Record> records{};
     std::unique_ptr<IntervalNode> lNode{nullptr};
@@ -33,64 +28,91 @@ public:
     ~IntervalNode()                                 = default; //!< Defaulted.
      //!\}
 
+     /*!
+        \brief Get the left child node of current node.
+        \return Returns a std::unique_ptr reference to the left child node.
+     */
      std::unique_ptr<IntervalNode> & get_left_node()
      {
          return lNode;
      }
 
+     /*!
+        \brief Get the right child node of current node.
+        \return Returns a std::unique_ptr reference to the right child node.
+     */
      std::unique_ptr<IntervalNode> & get_right_node()
      {
          return rNode;
      }
 
+     /*!
+        \brief Get the median for the current node.
+        \return Returns the median of the current node.
+     */
      int32_t const & get_median()
      {
          return median;
      }
 
+     /*!
+        \brief Get the records stored by the current node.
+        \return Returns a reference to a vector of bamit::Record objects stored by the current node.
+     */
      std::vector<Record> & get_records()
      {
          return records;
      }
 
-     void set_is_leaf()
-     {
-         this->isLeaf = true;
-     }
-
+     /*!
+        \brief Set the median value for the current node.
+        \param m The calculated median based on the records stored by this node.
+     */
      void set_median(int32_t const & m)
      {
-         this->median = m;
+         this->median = std::move(m);
      }
 
+     /*!
+        \brief Print the Interval Tree starting at this node.
+        \param level The level of the current node.
+     */
      void print(int32_t level)
      {
-         seqan3::debug_stream << "Level: " << level << '\n' << "Median: " << this->get_median() << '\n' << "Reads: ";
+         std::string indent(level, '\t');
+         seqan3::debug_stream << indent << "Level: " << level << '\n' <<
+                                 indent << "Median: " << this->get_median() << '\n' <<
+                                 indent << "Reads: ";
          for (auto & r : records)
          {
-             seqan3::debug_stream << "[" << r.start << ", " << r.end << "]";
+             seqan3::debug_stream << "[" << r.start << ", " << r.end << "] ";
          }
-         seqan3::debug_stream << "\n\n";
+         seqan3::debug_stream << "\n";
 
          if (lNode)
          {
-             seqan3::debug_stream << "left node... \n";
+             seqan3::debug_stream << indent << "left node... \n";
              lNode->print(level + 1);
          }
          if (rNode)
          {
-             seqan3::debug_stream << "right node... \n";
+             seqan3::debug_stream << indent << "right node... \n";
              rNode->print(level + 1);
          }
      }
 
 };
 
+/*!
+   \brief Calculate the median for a set of records based on the starts and ends of all records.
+   \param records_i The list of records to calculate a median off of.
+   \return Returns the median value.
+*/
 int32_t calculate_median(std::vector<Record> const & records_i)
 {
     std::vector<int32_t> values{};
     int32_t median{};
-    for (auto r : records_i)
+    for (auto const & r : records_i)
     {
         values.push_back(r.start);
         values.push_back(r.end);
@@ -105,7 +127,11 @@ int32_t calculate_median(std::vector<Record> const & records_i)
     return median;
 }
 
-
+/*!
+   \brief Construct an interval tree given a set of records.
+   \param node The current node to fill.
+   \param records_i The list of records to create the tree over.
+*/
 void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> const & records_i)
 {
     if (records_i.empty())
@@ -121,7 +147,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     // Get reads which intersect median.
     std::vector<Record> lRecords{};
     std::vector<Record> rRecords{};
-    for (const auto & r : records_i)
+    for (auto const & r : records_i)
     {
         if (node->get_median() < r.start) // Median is to the left of the read, so read is in right subtree.
         {
@@ -136,20 +162,6 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
             lRecords.push_back(std::move(r));
         }
     }
-    // seqan3::debug_stream << "Median: " << node->get_median() << ", Reads: ";
-    // for (auto & r : node->get_records())
-    // {
-    //     seqan3::debug_stream << "[" << r.start << ", " << r.end << "], ";
-    // }
-    // seqan3::debug_stream << std::endl;
-
-    // If lRecords and rRecords are empty, it is a leaf.
-    if (lRecords.empty() && rRecords.empty())
-    {
-        node->set_is_leaf();
-        // seqan3::debug_stream << "Is leaf! Median: " << median << std::endl;
-        return;
-    }
 
     // Set left and right subtrees.
     construct_tree(node->get_left_node(), lRecords);
@@ -157,7 +169,17 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     return;
 }
 
-void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, std::vector<Record> & results)
+/*!
+   \brief Find the records which overlap a given start and end position.
+   \param root The root of the tree to search in.
+   \param start The start position of the search.
+   \param end The end position of the search.
+   \param results The list of records overlapping the search.
+*/
+void overlap(std::unique_ptr<IntervalNode> const & root,
+             int32_t const & start,
+             int32_t const & end,
+             std::vector<Record> & results)
 {
     if (!root)
     {
@@ -166,7 +188,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
 
     if (root->get_median() >= start && root->get_median() <= end)
     {
-        for (auto & r : root->get_records())
+        for (auto const & r : root->get_records())
         {
             results.push_back(r);
         }
@@ -176,7 +198,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
     else if (end < root->get_median())
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorStart());
-        for (auto & r : root->get_records())
+        for (auto const & r : root->get_records())
         {
             if (r.start <= end)
             {
@@ -192,7 +214,7 @@ void overlap(std::unique_ptr<IntervalNode> & root, int32_t start, int32_t end, s
     else if (start > root->get_median())
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorEnd());
-        for (auto & r : root->get_records())
+        for (auto const & r : root->get_records())
         {
             if (r.end >= start)
             {

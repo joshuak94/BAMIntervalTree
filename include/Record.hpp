@@ -4,6 +4,7 @@
 
 namespace bamit
 {
+/*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
     int32_t start, end, ref_id;
@@ -13,26 +14,45 @@ struct Record
                                                                ref_id{std::move(ref_id_i)} {}
 };
 
+/*! Used to sort two Record objects in ascending order by start position. */
 struct RecordComparatorStart
 {
-    bool operator ()(const Record & record1, const Record & record2)
+    /*!
+       \brief Compare two Record objects.
+       \param record1 The first record.
+       \param record2 The second record.
+       \return Returns `true` if record1 starts before record2, or if they both start at the same position but
+               record1 ends before record2.
+    */
+    bool operator ()(Record const & record1, Record const & record2)
     {
-        if(record1.start == record2.start)
-            return record1.end < record2.end;
-        return record1.start < record2.start;
+        return (record1.start == record2.start) ? (record1.end < record2.end) : (record1.start < record2.start);
     }
 };
 
+/*! Used to sort two Record objects in descending order by end position. */
 struct RecordComparatorEnd
 {
-    bool operator ()(const Record & record1, const Record & record2)
+    /*!
+       \brief Compare two Record objects.
+       \param record1 The first record.
+       \param record2 The second record.
+       \return Returns `true` if record1 ends after record2, or if they both end at the same position but
+               record1 starts after record2.
+    */
+    bool operator ()(Record const & record1, Record const & record2)
     {
-        if(record1.end == record2.end)
-            return record1.start > record2.start;
-        return record1.end > record2.end;
+        return (record1.end == record2.end) ? (record1.start > record2.start) : (record1.end > record2.end);
     }
 };
 
+/*!
+   \brief Get the length of a seqan3::cigar vector based on M/I/D/=/X operations.
+   \param cigar The vector of seqan3::cigar characters.
+   \pre "Pre-conditions"
+   \post "Post-conditions"
+   \return Returns the length of M/I/D/=/X.
+*/
 int32_t get_length(std::vector<seqan3::cigar> const & cigar)
 {
     using seqan3::operator""_cigar_operation;
@@ -41,8 +61,8 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
     int32_t result{0};
     for (auto const & c : cigar)
     {
-        seqan3::cigar::operation op{get<1>(c)};
-        uint32_t length{get<0>(c)};
+        seqan3::cigar::operation const op{get<1>(c)};
+        uint32_t const length{get<0>(c)};
         if (op == 'M'_cigar_operation ||
             op == 'I'_cigar_operation ||
             op == 'D'_cigar_operation ||
@@ -55,7 +75,13 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
     return result;
 }
 
-void parse_file(std::filesystem::path & input_path,
+/*!
+   \brief Parse an alignment file and store the records and the cumulative sum across the genome.
+   \param input_path The path to the alignment file.
+   \param cumulative_length An empty vector which will store the running sum of chromosome lengths at each chromosome.
+   \param record_list An empty vector which will store all of the records.
+*/
+void parse_file(std::filesystem::path const & input_path,
                 std::vector<uint32_t> & cumulative_length,
                 std::vector<Record> & record_list)
 {
@@ -66,15 +92,21 @@ void parse_file(std::filesystem::path & input_path,
                                      seqan3::field::seq>;
     seqan3::sam_file_input input{input_path, my_fields{}};
 
+    // First make sure alingment file is sorted by coordinate.
+    if (input.header().sorting != "coordinate")
+    {
+        throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
+    }
+
     // Calculate total length of genome.
     uint32_t running_sum{0};
-    for (auto c : input.header().ref_id_info)
+    for (auto const & c : input.header().ref_id_info)
     {
         cumulative_length.push_back(running_sum);
         running_sum += std::get<0>(c);
     }
 
-    for (auto & r : input)
+    for (auto const & r : input)
     {
         int32_t ref_id = std::get<1>(r).value();
         int32_t length = get_length(std::get<3>(r));
