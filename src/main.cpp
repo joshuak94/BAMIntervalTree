@@ -63,9 +63,8 @@ int main(int argc, char ** argv)
     std::vector<uint32_t> cumulative_length{};
     bamit::parse_file(options.input_path, cumulative_length, records);
 
-    seqan3::debug_stream << "Creating Node.\n";
+    seqan3::debug_stream << "Creating Interval Tree.\n";
     std::unique_ptr<bamit::IntervalNode> root(nullptr);
-
     bamit::construct_tree(root, records);
 
     root->print(0);
@@ -78,11 +77,5 @@ int main(int argc, char ** argv)
         for (auto & r: results)
             seqan3::debug_stream << r.start << " " << r.end << "\n";
     }
-    // std::vector<Record> result = root.get_records();
-    //
-    // for (auto r : result)
-    // {
-    //     seqan3::debug_stream << "[" << r.start << ", " << r.end << "]" << std::endl;
-    // }
     return 0;
 }
