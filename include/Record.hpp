@@ -4,21 +4,22 @@
 
 namespace bamit
 {
+using Position = std::pair<int32_t, int32_t>;
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
-    int32_t start, end, ref_id;
+    Position start, end;
 
-    Record(int32_t start_i, int32_t end_i, int32_t ref_id_i) : start{std::move(start_i)},
-                                                               end{std::move(end_i)},
-                                                               ref_id{std::move(ref_id_i)} {}
+    Record(Position start_i, Position end_i) :
+        start{std::move(start_i)},
+        end{std::move(end_i)} {}
 };
 
 /*! Used to sort two Record objects in ascending order by start position. */
 struct RecordComparatorStart
 {
     /*!
-       \brief Compare two Record objects.
+       \brief Compare two Record objects and sort them in ascending order by starts.
        \param record1 The first record.
        \param record2 The second record.
        \return Returns `true` if record1 starts before record2, or if they both start at the same position but
@@ -34,7 +35,7 @@ struct RecordComparatorStart
 struct RecordComparatorEnd
 {
     /*!
-       \brief Compare two Record objects.
+       \brief Compare two Record objects and sort them in descending order by ends.
        \param record1 The first record.
        \param record2 The second record.
        \return Returns `true` if record1 ends after record2, or if they both end at the same position but
@@ -49,8 +50,6 @@ struct RecordComparatorEnd
 /*!
    \brief Get the length of a seqan3::cigar vector based on M/I/D/=/X operations.
    \param cigar The vector of seqan3::cigar characters.
-   \pre "Pre-conditions"
-   \post "Post-conditions"
    \return Returns the length of M/I/D/=/X.
 */
 int32_t get_length(std::vector<seqan3::cigar> const & cigar)
@@ -78,18 +77,14 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
 /*!
    \brief Parse an alignment file and store the records and the cumulative sum across the genome.
    \param input_path The path to the alignment file.
-   \param cumulative_length An empty vector which will store the running sum of chromosome lengths at each chromosome.
    \param record_list An empty vector which will store all of the records.
 */
 void parse_file(std::filesystem::path const & input_path,
-                std::vector<uint32_t> & cumulative_length,
                 std::vector<Record> & record_list)
 {
-    using my_fields = seqan3::fields<seqan3::field::id,
-                                     seqan3::field::ref_id,
+    using my_fields = seqan3::fields<seqan3::field::ref_id,
                                      seqan3::field::ref_offset,
-                                     seqan3::field::cigar,
-                                     seqan3::field::seq>;
+                                     seqan3::field::cigar>;
     seqan3::sam_file_input input{input_path, my_fields{}};
 
     // First make sure alingment file is sorted by coordinate.
@@ -98,22 +93,17 @@ void parse_file(std::filesystem::path const & input_path,
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
     }
 
-    // Calculate total length of genome.
-    uint32_t running_sum{0};
-    for (auto const & c : input.header().ref_id_info)
-    {
-        cumulative_length.push_back(running_sum);
-        running_sum += std::get<0>(c);
-    }
-
     for (auto const & r : input)
     {
-        int32_t ref_id = std::get<1>(r).value();
-        int32_t length = get_length(std::get<3>(r));
-        int32_t start = std::get<2>(r).value() + cumulative_length[ref_id];
-        int32_t end = std::get<2>(r).value() + length + cumulative_length[ref_id];
-        Record rec{start, end, ref_id};
-        record_list.push_back(rec);
+        int32_t ref_id = r.reference_id().value_or(-1);
+        int32_t position = r.reference_position().value_or(-1);
+        Position start = std::make_pair(ref_id, position);
+        Position end = std::make_pair(ref_id, position + get_length(r.cigar_sequence()));
+        Record rec{start, end};
+        if (ref_id != -1 && position != -1)
+        {
+            record_list.push_back(std::move(rec));
+        }
     }
 }
 }

@@ -12,7 +12,7 @@ namespace bamit
 class IntervalNode
 {
 private:
-    int32_t median{};
+    Position median{};
     std::vector<Record> records{};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
@@ -50,7 +50,7 @@ public:
         \brief Get the median for the current node.
         \return Returns the median of the current node.
      */
-     int32_t const & get_median()
+     Position const & get_median()
      {
          return median;
      }
@@ -68,7 +68,7 @@ public:
         \brief Set the median value for the current node.
         \param m The calculated median based on the records stored by this node.
      */
-     void set_median(int32_t const & m)
+     void set_median(Position const & m)
      {
          this->median = std::move(m);
      }
@@ -81,7 +81,8 @@ public:
      {
          std::string indent(level, '\t');
          seqan3::debug_stream << indent << "Level: " << level << '\n' <<
-                                 indent << "Median: " << this->get_median() << '\n' <<
+                                 indent << "Median(chromosome, position): " << std::get<0>(this->get_median()) <<
+                                 ", " << std::get<1>(this->get_median()) << '\n' <<
                                  indent << "Reads: ";
          for (auto & r : records)
          {
@@ -106,12 +107,12 @@ public:
 /*!
    \brief Calculate the median for a set of records based on the starts and ends of all records.
    \param records_i The list of records to calculate a median off of.
-   \return Returns the median value.
+   \return Returns the median value and which chromosome it is in.
 */
-int32_t calculate_median(std::vector<Record> const & records_i)
+Position calculate_median(std::vector<Record> const & records_i)
 {
-    std::vector<int32_t> values{};
-    int32_t median{};
+    std::vector<Position> values{};
+    Position median{};
     for (auto const & r : records_i)
     {
         values.push_back(r.start);
@@ -120,10 +121,16 @@ int32_t calculate_median(std::vector<Record> const & records_i)
     std::sort(values.begin(), values.end());
     size_t size = values.size();
 
-     // The size of the vector values will always be an even number, therefore the median is determined by taking the
-     // mean of the two values in the middle.
-     median = (values[size / 2 - 1] + values[size / 2]) / 2;
-
+    if (std::get<0>(values[size / 2 - 1]) == std::get<0>(values[size / 2]))
+    {
+        int32_t median_value = (std::get<1>(values[size / 2 - 1]) + std::get<1>(values[size / 2])) / 2;
+        median = std::make_pair(std::get<0>(values[size / 2]), median_value);
+    }
+    else
+    {
+        median = values[size / 2];
+    }
+     // The size of the vector values will always be an even number, therefore the median is just the leftmost.
     return median;
 }
 
@@ -143,23 +150,27 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 
     // Calculate and set median.
     node->set_median(calculate_median(records_i));
+    Position cur_median = node->get_median();
 
     // Get reads which intersect median.
     std::vector<Record> lRecords{};
     std::vector<Record> rRecords{};
     for (auto const & r : records_i)
     {
-        if (node->get_median() < r.start) // Median is to the left of the read, so read is in right subtree.
+        // Median is to the left of the read, so read is in right subtree.
+        if (cur_median < r.start)
         {
             rRecords.push_back(std::move(r));
         }
-        else if (node->get_median() >= r.start && node->get_median() <= r.end) // Median is within the read.
-        {
-            node->get_records().push_back(std::move(r));
-        }
-        else if (node->get_median() > r.end) // Median is to the right of the read, so read is in left subtree.
+        // Median is to the right of the read, so read is in left subtree.
+        else if (cur_median > r.end)
         {
             lRecords.push_back(std::move(r));
+        }
+        // If median is not to the left or right, it must be within the read.
+        else
+        {
+            node->get_records().push_back(std::move(r));
         }
     }
 
@@ -177,8 +188,8 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
    \param results The list of records overlapping the search.
 */
 void overlap(std::unique_ptr<IntervalNode> const & root,
-             int32_t const & start,
-             int32_t const & end,
+             Position const & start,
+             Position const & end,
              std::vector<Record> & results)
 {
     if (!root)
@@ -186,16 +197,17 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
         return;
     }
 
-    if (root->get_median() >= start && root->get_median() <= end)
+    Position cur_median = root->get_median();
+    // If the current median is overlapping the read, add all records from this node and search the left and right.
+    if (cur_median >= start && cur_median <= end)
     {
-        for (auto const & r : root->get_records())
-        {
-            results.push_back(r);
-        }
+        results.insert(std::end(results), std::begin(root->get_records()), std::end(root->get_records()));
         overlap(root->get_left_node(), start, end, results);
         overlap(root->get_right_node(), start, end, results);
     }
-    else if (end < root->get_median())
+    // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
+    // start before the overlap ends.
+    else if (end < cur_median)
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorStart());
         for (auto const & r : root->get_records())
@@ -211,7 +223,7 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
         }
         overlap(root->get_left_node(), start, end, results);
     }
-    else if (start > root->get_median())
+    else if (start > cur_median)
     {
         std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorEnd());
         for (auto const & r : root->get_records())
