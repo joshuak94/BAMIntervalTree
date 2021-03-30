@@ -15,6 +15,7 @@ struct CmdOptions
    \param start Where the resulting start bamit::Position will go.
    \param end Where the resulting end bamit::Position will go.
    \param options The CmdOptions object storing the start and end strings from the user.
+   \param ref_ids The reference chromosome names, stored in a deque by seqan3.
    \return 0 if the parsing was successful, -1 otherwise.
 */
 int32_t const parse_overlap_query(bamit::Position & start,

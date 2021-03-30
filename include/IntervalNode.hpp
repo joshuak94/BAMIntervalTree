@@ -112,6 +112,7 @@ public:
 Position calculate_median(std::vector<Record> const & records_i)
 {
     std::vector<Position> values{};
+    values.reserve(records_i.size() * 2);
     Position median{};
     for (auto const & r : records_i)
     {
