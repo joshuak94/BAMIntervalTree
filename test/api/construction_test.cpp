@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
 #include <math.h>
 
-#include "IntervalNode.hpp"
-#include "Record.hpp"
+#include <bamit/all.hpp>
 
 // Recursive function to go through the tree and check the medians.
 void check_medians(std::unique_ptr<bamit::IntervalNode> const & root, int level, int pos,

@@ -1,7 +1,8 @@
 #include <seqan3/argument_parser/argument_parser.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/sam_file/all.hpp>
 
-#include "IntervalNode.hpp"
+#include <bamit/all.hpp>
 
 struct CmdOptions
 {

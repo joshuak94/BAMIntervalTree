@@ -1,8 +1,8 @@
 #pragma once
-#include <seqan3/io/sam_file/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/sam_file/input.hpp>
 
-#include "Record.hpp"
+#include <bamit/Record.hpp>
 
 namespace bamit
 {
