@@ -6,9 +6,9 @@
 
 // Recursive function to go through the tree and check the medians.
 void check_medians(std::unique_ptr<bamit::IntervalNode> const & root, int level, int pos,
-                   std::vector<int32_t> const & expected_medians)
+                   std::vector<bamit::Position> const & expected_medians)
 {
-    if (expected_medians[pow(2, level) - 1 + pos] > 0)
+    if (std::get<0>(expected_medians[pow(2, level) - 1 + pos]) != -1)
     {
         EXPECT_EQ(root->get_median(), expected_medians[pow(2, level) - 1 + pos]);
         if(root->get_left_node())
@@ -33,17 +33,24 @@ TEST(tree_construct, simulated_chr1_small_golden)
                                      seqan3::field::seq>;
 
     std::vector<bamit::Record> records{};
-    std::vector<uint32_t> cumulative_length{};
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
-    bamit::parse_file(input, cumulative_length, records);
+    bamit::parse_file(input, records);
 
     std::unique_ptr<bamit::IntervalNode> root(nullptr);
     bamit::construct_tree(root, records);
 
     // Test Tree
-    std::vector<int32_t> expected_medians{944, 467, 1397, 257, 676, 1132, 1664, 140, 363, 571, 802, 1032, 1257,
-                                          1531, 1822, 77, 197, 0, 414, 519, 624, 730, 886, 0, 0, 1194, 1323,
-                                          1464, 1593, 1742, 1928};
+    std::vector<bamit::Position> expected_medians{std::make_pair(0, 944), std::make_pair(0, 467), std::make_pair(0, 1397),
+                                                 std::make_pair(0, 257), std::make_pair(0, 676), std::make_pair(0, 1132),
+                                                 std::make_pair(0, 1664), std::make_pair(0, 140), std::make_pair(0, 363),
+                                                 std::make_pair(0, 571), std::make_pair(0, 802), std::make_pair(0, 1032),
+                                                 std::make_pair(0, 1257), std::make_pair(0, 1531), std::make_pair(0, 1822),
+                                                 std::make_pair(0, 77), std::make_pair(0, 197), std::make_pair(-1, 0),
+                                                 std::make_pair(0, 414), std::make_pair(0, 519), std::make_pair(0, 624),
+                                                 std::make_pair(0, 730), std::make_pair(0, 886), std::make_pair(-1, 0),
+                                                 std::make_pair(-1, 0), std::make_pair(0, 1194), std::make_pair(0, 1323),
+                                                 std::make_pair(0, 1464), std::make_pair(0, 1593), std::make_pair(0, 1742),
+                                                 std::make_pair(0, 1928)};
     check_medians(root, 0, 0, expected_medians);
 }
 
@@ -57,17 +64,24 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
                                      seqan3::field::seq>;
 
     std::vector<bamit::Record> records{};
-    std::vector<uint32_t> cumulative_length{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    bamit::parse_file(input, cumulative_length, records);
+    bamit::parse_file(input, records);
 
     std::unique_ptr<bamit::IntervalNode> root(nullptr);
     bamit::construct_tree(root, records);
 
 
-    std::vector<int32_t> expected_medians{991, 502, 1611, 283, 824, 1276, 1821, 130, 388, 623, 909, 1142, 1505,
-                                          1714, 1938, 71, 196, 336, 448, 563, 759, 0, 0, 1064, 1209, 1450, 1558,
-                                          0, 0, 1885, 2003};
+    std::vector<bamit::Position> expected_medians{std::make_pair(1, 291), std::make_pair(0, 502), std::make_pair(2, 211),
+                                                  std::make_pair(0, 283), std::make_pair(1, 124), std::make_pair(1, 576),
+                                                  std::make_pair(2, 421), std::make_pair(0, 130), std::make_pair(0, 388),
+                                                  std::make_pair(0, 623), std::make_pair(1, 209), std::make_pair(1, 442),
+                                                  std::make_pair(2, 105), std::make_pair(2, 314), std::make_pair(2, 538),
+                                                  std::make_pair(0, 71), std::make_pair(0, 196), std::make_pair(0, 336),
+                                                  std::make_pair(0, 448), std::make_pair(0, 563), std::make_pair(1, 59),
+                                                  std::make_pair(-1, 0), std::make_pair(-1, 0), std::make_pair(1, 364),
+                                                  std::make_pair(1, 509), std::make_pair(2, 50), std::make_pair(2, 158),
+                                                  std::make_pair(-1, 0), std::make_pair(-1, 0), std::make_pair(2, 485),
+                                                  std::make_pair(2, 603)};
     // Test Tree
     check_medians(root, 0, 0, expected_medians);
 }
@@ -84,8 +98,7 @@ TEST(tree_construct, unsorted)
     unsorted_sam.close();
 
     std::vector<bamit::Record> records{};
-    std::vector<uint32_t> cumulative_length{};
-    EXPECT_THROW(bamit::parse_file(unsorted_sam_path, cumulative_length, records), seqan3::format_error);
+    EXPECT_THROW(bamit::parse_file(unsorted_sam_path, records), seqan3::format_error);
 
     std::filesystem::remove(unsorted_sam_path);
 }
