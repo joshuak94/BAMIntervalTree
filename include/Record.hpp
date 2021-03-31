@@ -99,9 +99,9 @@ void parse_file(std::filesystem::path const & input_path,
         int32_t position = r.reference_position().value_or(-1);
         Position start = std::make_pair(ref_id, position);
         Position end = std::make_pair(ref_id, position + get_length(r.cigar_sequence()));
-        Record rec{start, end};
         if (ref_id != -1 && position != -1)
         {
+            Record rec{start, end};
             record_list.push_back(std::move(rec));
         }
     }

@@ -108,6 +108,11 @@ public:
    \brief Calculate the median for a set of records based on the starts and ends of all records.
    \param records_i The list of records to calculate a median off of.
    \return Returns the median value and which chromosome it is in.
+
+   The median is calculated by sorting all of the starts and ends from a list of records. Since each record
+   has a start and end, the list is an even length and the median is the average of the middle two positions.
+   If the middle two positions are from the same chromsome, then they are averaged. If they're from two different
+   chromosomes then averaging is not possible and the right-most is taken.
 */
 Position calculate_median(std::vector<Record> const & records_i)
 {
@@ -131,7 +136,6 @@ Position calculate_median(std::vector<Record> const & records_i)
     {
         median = values[size / 2];
     }
-     // The size of the vector values will always be an even number, therefore the median is just the leftmost.
     return median;
 }
 
