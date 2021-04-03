@@ -1,18 +1,45 @@
 #pragma once
 
 #include <seqan3/io/sam_file/input.hpp>
+#include <cereal/types/tuple.hpp>
 
 namespace bamit
 {
-using Position = std::pair<int32_t, int32_t>;
+using Position = std::tuple<int32_t, int32_t>;
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
     Position start, end;
 
+    /*!\name Constructors, destructor and assignment
+     * \{
+     */
+    constexpr Record()                        = default; //!< Defaulted.
+    Record(Record const &)                    = default; //!< Defaulted.
+    Record(Record &&)                         = default; //!< Defaulted.
+    Record & operator=(Record const &)        = default; //!< Defaulted.
+    Record & operator=(Record &&)             = default; //!< Defaulted.
+    ~Record()                                 = default; //!< Defaulted.
+     //!\}
     Record(Position start_i, Position end_i) :
         start{std::move(start_i)},
         end{std::move(end_i)} {}
+
+    template <class Archive>
+    void serialize(Archive & ar)
+    {
+        ar(start, end);
+    }
+
+    /*!
+       \brief Compare two Record objects and return true if they are equal.
+       \param rhs The second record.
+       \return Returns `true` if the two records are equal, with respect to chromosome and position.
+    */
+    bool operator== (Record const & rhs) const
+    {
+        return (start == rhs.start && end == rhs.end);
+    }
 };
 
 /*! Used to sort two Record objects in ascending order by start position. */
