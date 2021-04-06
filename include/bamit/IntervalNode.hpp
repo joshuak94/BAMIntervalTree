@@ -1,6 +1,9 @@
 #pragma once
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sam_file/input.hpp>
+#include <cereal/types/memory.hpp>
+#include <cereal/types/tuple.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <bamit/Record.hpp>
 
@@ -101,6 +104,12 @@ public:
              rNode->print(level + 1);
          }
      }
+
+    template <class Archive>
+    void serialize(Archive & ar)
+    {
+        ar(median, this->lNode, this->rNode, this->records);
+    }
 
 };
 
@@ -244,5 +253,17 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
         }
         overlap(root->get_right_node(), start, end, results);
     }
+}
+
+template <class Archive>
+void write(std::unique_ptr<IntervalNode> const & node, Archive & archive)
+{
+    node->serialize(archive);
+}
+
+template <class Archive>
+void read(std::unique_ptr<IntervalNode> & node, Archive & archive)
+{
+    node->serialize(archive);
 }
 }
