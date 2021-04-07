@@ -1,17 +1,37 @@
 #pragma once
 
 #include <seqan3/io/sam_file/input.hpp>
+#include <seqan3/io/sam_file/output.hpp>
 #include <cereal/types/tuple.hpp>
 
 namespace bamit
 {
-using sam_file_input_fields = seqan3::fields<seqan3::field::ref_id,
+using sam_file_input_fields = seqan3::fields<seqan3::field::id,
+                                             seqan3::field::seq,
+                                             seqan3::field::offset,
+                                             seqan3::field::ref_id,
                                              seqan3::field::ref_offset,
                                              seqan3::field::file_offset,
-                                             seqan3::field::cigar>;
+                                             seqan3::field::cigar,
+                                             seqan3::field::mapq,
+                                             seqan3::field::qual,
+                                             seqan3::field::flag,
+                                             seqan3::field::mate,
+                                             seqan3::field::header_ptr>;
 using sam_file_input_type = seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
                                                    sam_file_input_fields,
                                                    seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
+
+using sam_file_output_fields = seqan3::fields<seqan3::field::id,
+                                              seqan3::field::flag,
+                                              seqan3::field::ref_id,
+                                              seqan3::field::ref_offset,
+                                              seqan3::field::mapq,
+                                              seqan3::field::cigar,
+                                              seqan3::field::mate,
+                                              seqan3::field::seq,
+                                              seqan3::field::qual>;
+
 using Position = std::tuple<int32_t, int32_t>;
 
 auto properly_mapped = std::views::filter([] (auto const & rec)

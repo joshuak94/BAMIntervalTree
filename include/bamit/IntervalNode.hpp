@@ -221,20 +221,58 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
     if (cur_median >= start && cur_median <= end)
     {
         offstream_pos = root->get_file_offset();
+        seqan3::debug_stream << cur_median << " " << offstream_pos << "\n";
         overlap(root->get_left_node(), start, end, offstream_pos);
     }
     // If current median is to the right of the overlap, go to the left tree.
     else if (end < cur_median)
     {
+        offstream_pos = root->get_file_offset();
         overlap(root->get_left_node(), start, end, offstream_pos);
     }
     // If current median is to the left of the overlap, go to the right only if no offstream position has been found yet.
     // If a offstream position has been found, every position on the right would be greater than that position and only
     // the leftmost offstream position is of interest.
-    else if ((start > cur_median) & (offstream_pos == -1))
+    else if (start > cur_median)
     {
+        offstream_pos = root->get_file_offset();
         overlap(root->get_right_node(), start, end, offstream_pos);
     }
+}
+
+/*!
+   \brief Find the records which overlap a given start and end position.
+   \param input The sam file input of type bamit::sam_file_input_type.
+   \param root The root of the tree to search in.
+   \param start The start position of the search.
+   \param end The end position of the search.
+   \param results The list of records overlapping the search.
+*/
+void get_records(sam_file_input_type & input,
+                 std::unique_ptr<IntervalNode> const & root,
+                 Position const & start,
+                 Position const & end,
+                 std::filesystem::path & outname)
+{
+    std::streamoff offstream_pos{-1};
+    overlap(root, start, end, offstream_pos);
+
+    input.seek(offstream_pos);
+
+    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+    for (auto & r : input | properly_mapped)
+    {
+        if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
+        {
+            break;
+        }
+        if (std::make_tuple(r.reference_id(), r.reference_position().value() + get_length(r.cigar_sequence())) < start)
+        {
+            continue;
+        }
+
+        fout.push_back(r);
+   }
 }
 
 template <class Archive>
