@@ -172,12 +172,7 @@ int parse_overlap(seqan3::argument_parser & parser)
       return -1;
     }
 
-    using my_fields = seqan3::fields<seqan3::field::id,
-                                     seqan3::field::ref_id,
-                                     seqan3::field::ref_offset,
-                                     seqan3::field::cigar,
-                                     seqan3::field::seq>;
-    seqan3::sam_file_input input{options.input_path, my_fields{}};
+    bamit::sam_file_input_type input{options.input_path};
     std::filesystem::path index_path{options.input_path};
     std::unique_ptr<bamit::IntervalNode> root(nullptr);
     index_path.replace_extension("bit");
@@ -204,7 +199,7 @@ int parse_overlap(seqan3::argument_parser & parser)
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
     std::vector<bamit::Record> results{};
-    bamit::overlap(root, start, end, results);
+    bamit::overlap(input, root, start, end, results);
     for (auto & r: results)
         seqan3::debug_stream << r.start << " " << r.end << "\n";
     return 0;

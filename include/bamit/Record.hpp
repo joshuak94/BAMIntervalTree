@@ -5,11 +5,25 @@
 
 namespace bamit
 {
+using sam_file_input_fields = seqan3::fields<seqan3::field::ref_id,
+                                             seqan3::field::ref_offset,
+                                             seqan3::field::file_offset,
+                                             seqan3::field::cigar>;
+using sam_file_input_type = seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
+                                                   sam_file_input_fields,
+                                                   seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
 using Position = std::tuple<int32_t, int32_t>;
+
+auto properly_mapped = std::views::filter([] (auto const & rec)
+{
+    return (rec.reference_id().value_or(-1) != -1) && (rec.reference_position().value_or(-1) != -1);
+});
+
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
     Position start, end;
+    std::streampos file_offset{-1};
 
     /*!\name Constructors, destructor and assignment
      * \{
@@ -21,9 +35,10 @@ struct Record
     Record & operator=(Record &&)             = default; //!< Defaulted.
     ~Record()                                 = default; //!< Defaulted.
      //!\}
-    Record(Position start_i, Position end_i) :
+    Record(Position start_i, Position end_i, std::streampos file_offset_i) :
         start{std::move(start_i)},
-        end{std::move(end_i)} {}
+        end{std::move(end_i)},
+        file_offset{std::move(file_offset_i)} {}
 
     template <class Archive>
     void serialize(Archive & ar)
@@ -109,10 +124,7 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
 void parse_file(std::filesystem::path const & input_path,
                 std::vector<Record> & record_list)
 {
-    using my_fields = seqan3::fields<seqan3::field::ref_id,
-                                     seqan3::field::ref_offset,
-                                     seqan3::field::cigar>;
-    seqan3::sam_file_input input{input_path, my_fields{}};
+    sam_file_input_type input{input_path};
 
     // First make sure alingment file is sorted by coordinate.
     if (input.header().sorting != "coordinate")
@@ -120,17 +132,12 @@ void parse_file(std::filesystem::path const & input_path,
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
     }
 
-    for (auto const & r : input)
+    for (auto const & r : input | properly_mapped)
     {
-        int32_t ref_id = r.reference_id().value_or(-1);
-        int32_t position = r.reference_position().value_or(-1);
-        Position start = std::make_pair(ref_id, position);
-        Position end = std::make_pair(ref_id, position + get_length(r.cigar_sequence()));
-        if (ref_id != -1 && position != -1)
-        {
-            Record rec{start, end};
-            record_list.push_back(std::move(rec));
-        }
+        record_list.emplace_back(std::make_tuple(r.reference_id().value(), r.reference_position().value()),
+                                 std::make_tuple(r.reference_id().value(), r.reference_position().value() +
+                                                                           get_length(r.cigar_sequence())),
+                                 r.file_offset());
     }
 }
 }

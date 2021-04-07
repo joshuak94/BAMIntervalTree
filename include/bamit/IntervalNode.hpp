@@ -9,14 +9,14 @@
 
 namespace bamit
 {
-/*! The IntervalNode class stores a single node which is a part of an interval tree. It stores a list of
- *  bamit::Record objects that intersect a given median, along with pointers to its left and right children.
+/*! The IntervalNode class stores a single node which is a part of an interval tree. It stores a file offset to the
+ *  first read which intersects the median, along with pointers to its left and right children.
  */
 class IntervalNode
 {
 private:
     Position median{};
-    std::vector<Record> records{};
+    std::streamoff file_offset{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
@@ -59,19 +59,28 @@ public:
      }
 
      /*!
-        \brief Get the records stored by the current node.
-        \return Returns a reference to a vector of bamit::Record objects stored by the current node.
+        \brief Get the file offset to the first read stored by this node.
+        \return Returns a reference to a std::streamoff which can be used to seek to a file position.
      */
-     std::vector<Record> & get_records()
+     std::streamoff const & get_file_offset()
      {
-         return records;
+         return file_offset;
+     }
+
+     /*!
+        \brief Set the file offset to the first read for the current node.
+        \param new_file_offset The file offset based on the records stored by this node.
+     */
+     void set_file_offset(std::streamoff new_file_offset)
+     {
+         this->file_offset = std::move(new_file_offset);
      }
 
      /*!
         \brief Set the median value for the current node.
         \param m The calculated median based on the records stored by this node.
      */
-     void set_median(Position const & m)
+     void set_median(Position m)
      {
          this->median = std::move(m);
      }
@@ -86,13 +95,7 @@ public:
          seqan3::debug_stream << indent << "Level: " << level << '\n' <<
                                  indent << "Median(chromosome, position): " << std::get<0>(this->get_median()) <<
                                  ", " << std::get<1>(this->get_median()) << '\n' <<
-                                 indent << "Reads: ";
-         for (auto & r : records)
-         {
-             seqan3::debug_stream << "[" << r.start << ", " << r.end << "] ";
-         }
-         seqan3::debug_stream << "\n";
-
+                                 indent << "File offset: " << this->get_file_offset() << '\n';
          if (lNode)
          {
              seqan3::debug_stream << indent << "left node... \n";
@@ -108,7 +111,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(median, this->lNode, this->rNode, this->records);
+        ar(median, this->lNode, this->rNode, this->file_offset);
     }
 
 };
@@ -169,7 +172,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
     // Get reads which intersect median.
     std::vector<Record> lRecords{};
     std::vector<Record> rRecords{};
-    for (auto const & r : records_i)
+    for (auto & r : records_i)
     {
         // Median is to the left of the read, so read is in right subtree.
         if (cur_median < r.start)
@@ -182,9 +185,10 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
             lRecords.push_back(std::move(r));
         }
         // If median is not to the left or right, it must be within the read.
-        else
+        // Set the file_offset for this node only if it has not yet been set.
+        else if (node->get_file_offset() == -1)
         {
-            node->get_records().push_back(std::move(r));
+            node->set_file_offset(r.file_offset);
         }
     }
 
@@ -196,12 +200,14 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 
 /*!
    \brief Find the records which overlap a given start and end position.
+   \param input The sam file input of type bamit::sam_file_input_type.
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
    \param results The list of records overlapping the search.
 */
-void overlap(std::unique_ptr<IntervalNode> const & root,
+void overlap(sam_file_input_type & input,
+             std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
              std::vector<Record> & results)
@@ -213,18 +219,32 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
 
     Position cur_median = root->get_median();
     // If the current median is overlapping the read, add all records from this node and search the left and right.
+    input.seek(root->get_file_offset());
+    std::vector<Record> current_reads{};
+
+    for (auto const & r : input | properly_mapped)
+    {
+        if (std::make_tuple(r.reference_id(), r.reference_position()) > cur_median)
+        {
+            break;
+        }
+        current_reads.emplace_back(std::make_tuple(r.reference_id().value(), r.reference_position().value()),
+                                   std::make_tuple(r.reference_id().value(), r.reference_position().value() +
+                                                                             get_length(r.cigar_sequence())),
+                                   r.file_offset());
+    }
     if (cur_median >= start && cur_median <= end)
     {
-        results.insert(std::end(results), std::begin(root->get_records()), std::end(root->get_records()));
-        overlap(root->get_left_node(), start, end, results);
-        overlap(root->get_right_node(), start, end, results);
+        results.insert(std::end(results), std::begin(current_reads), std::end(current_reads));
+        overlap(input, root->get_left_node(), start, end, results);
+        overlap(input, root->get_right_node(), start, end, results);
     }
     // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
     // start before the overlap ends.
     else if (end < cur_median)
     {
-        std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorStart());
-        for (auto const & r : root->get_records())
+        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorStart());
+        for (auto const & r : current_reads)
         {
             if (r.start <= end)
             {
@@ -235,12 +255,12 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
                 break;
             }
         }
-        overlap(root->get_left_node(), start, end, results);
+        overlap(input, root->get_left_node(), start, end, results);
     }
     else if (start > cur_median)
     {
-        std::sort(root->get_records().begin(), root->get_records().end(), RecordComparatorEnd());
-        for (auto const & r : root->get_records())
+        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorEnd());
+        for (auto const & r : current_reads)
         {
             if (r.end >= start)
             {
@@ -251,7 +271,7 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
                 break;
             }
         }
-        overlap(root->get_right_node(), start, end, results);
+        overlap(input, root->get_right_node(), start, end, results);
     }
 }
 
