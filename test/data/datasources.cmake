@@ -18,3 +18,7 @@ declare_datasource (FILE simulated_mult_chr_small_golden.bam
 declare_datasource (FILE simulated_mult_chr_small_golden.bam.bai
                     URL ${CMAKE_SOURCE_DIR}/test/data/simulated_mult_chr_small_golden.bam.bai
                     URL_HASH SHA256=77261a82ea19a78518d37039dec473131b76e8f2a692ea2a25e1d9b13265459b)
+
+declare_datasource (FILE samtools_result.sam
+                    URL ${CMAKE_SOURCE_DIR}/test/data/samtools_result.sam
+                    URL_HASH SHA256=3bf125fb5ea74fec329501b7a9d51cd4f1a2239452638f77ea5981adfd227e2d)
