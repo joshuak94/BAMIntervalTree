@@ -210,7 +210,7 @@ void overlap(sam_file_input_type & input,
              std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
-             std::vector<Record> & results)
+             std::streamoff & result)
 {
     if (!root)
     {
@@ -219,59 +219,20 @@ void overlap(sam_file_input_type & input,
 
     Position cur_median = root->get_median();
     // If the current median is overlapping the read, add all records from this node and search the left and right.
-    input.seek(root->get_file_offset());
-    std::vector<Record> current_reads{};
-
-    for (auto const & r : input | properly_mapped)
-    {
-        if (std::make_tuple(r.reference_id(), r.reference_position()) > cur_median)
-        {
-            break;
-        }
-        current_reads.emplace_back(std::make_tuple(r.reference_id().value(), r.reference_position().value()),
-                                   std::make_tuple(r.reference_id().value(), r.reference_position().value() +
-                                                                             get_length(r.cigar_sequence())),
-                                   r.file_offset());
-    }
     if (cur_median >= start && cur_median <= end)
     {
-        results.insert(std::end(results), std::begin(current_reads), std::end(current_reads));
-        overlap(input, root->get_left_node(), start, end, results);
-        overlap(input, root->get_right_node(), start, end, results);
+        result = root->get_file_offset();
+        overlap(input, root->get_left_node(), start, end, result);
     }
     // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
     // start before the overlap ends.
     else if (end < cur_median)
     {
-        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorStart());
-        for (auto const & r : current_reads)
-        {
-            if (r.start <= end)
-            {
-                results.push_back(r);
-            }
-            else
-            {
-                break;
-            }
-        }
-        overlap(input, root->get_left_node(), start, end, results);
+        overlap(input, root->get_left_node(), start, end, result);
     }
-    else if (start > cur_median)
+    else if ((start > cur_median) & (result == -1))
     {
-        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorEnd());
-        for (auto const & r : current_reads)
-        {
-            if (r.end >= start)
-            {
-                results.push_back(r);
-            }
-            else
-            {
-                break;
-            }
-        }
-        overlap(input, root->get_right_node(), start, end, results);
+        overlap(input, root->get_right_node(), start, end, result);
     }
 }
 

@@ -198,10 +198,9 @@ int parse_overlap(seqan3::argument_parser & parser)
         return -1;
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
-    std::vector<bamit::Record> results{};
-    bamit::overlap(input, root, start, end, results);
-    for (auto & r: results)
-        seqan3::debug_stream << r.start << " " << r.end << "\n";
+    std::streamoff result{-1};
+    bamit::overlap(input, root, start, end, result);
+    seqan3::debug_stream << result << "\n";
     return 0;
 }
 
