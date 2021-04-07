@@ -200,14 +200,12 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 
 /*!
    \brief Find the records which overlap a given start and end position.
-   \param input The sam file input of type bamit::sam_file_input_type.
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
    \param results The list of records overlapping the search.
 */
-void overlap(sam_file_input_type & input,
-             std::unique_ptr<IntervalNode> const & root,
+void overlap(std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
              std::streamoff & result)
@@ -222,17 +220,17 @@ void overlap(sam_file_input_type & input,
     if (cur_median >= start && cur_median <= end)
     {
         result = root->get_file_offset();
-        overlap(input, root->get_left_node(), start, end, result);
+        overlap(root->get_left_node(), start, end, result);
     }
     // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
     // start before the overlap ends.
     else if (end < cur_median)
     {
-        overlap(input, root->get_left_node(), start, end, result);
+        overlap(root->get_left_node(), start, end, result);
     }
     else if ((start > cur_median) & (result == -1))
     {
-        overlap(input, root->get_right_node(), start, end, result);
+        overlap(root->get_right_node(), start, end, result);
     }
 }
 
