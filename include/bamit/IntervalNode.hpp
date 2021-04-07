@@ -199,16 +199,17 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 }
 
 /*!
-   \brief Find the records which overlap a given start and end position.
+   \brief Find the file offstream position that is close to the start of the range by traversing the tree. The offstream
+          position is guaranteed to be to the left of the start.
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param results The list of records overlapping the search.
+   \param offstream_pos The resulting offstream position.
 */
 void overlap(std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
-             std::streamoff & result)
+             std::streamoff & offstream_pos)
 {
     if (!root)
     {
@@ -216,21 +217,23 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
     }
 
     Position cur_median = root->get_median();
-    // If the current median is overlapping the read, add all records from this node and search the left and right.
+    // If the current median is overlapping the read, take the current offset as result and search the left further.
     if (cur_median >= start && cur_median <= end)
     {
-        result = root->get_file_offset();
-        overlap(root->get_left_node(), start, end, result);
+        offstream_pos = root->get_file_offset();
+        overlap(root->get_left_node(), start, end, offstream_pos);
     }
-    // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
-    // start before the overlap ends.
+    // If current median is to the right of the overlap, go to the left tree.
     else if (end < cur_median)
     {
-        overlap(root->get_left_node(), start, end, result);
+        overlap(root->get_left_node(), start, end, offstream_pos);
     }
-    else if ((start > cur_median) & (result == -1))
+    // If current median is to the left of the overlap, go to the right only if no offstream position has been found yet.
+    // If a offstream position has been found, every position on the right would be greater than that position and only
+    // the leftmost offstream position is of interest.
+    else if ((start > cur_median) & (offstream_pos == -1))
     {
-        overlap(root->get_right_node(), start, end, result);
+        overlap(root->get_right_node(), start, end, offstream_pos);
     }
 }
 
