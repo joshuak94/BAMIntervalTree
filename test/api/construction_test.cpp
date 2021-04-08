@@ -4,34 +4,24 @@
 #include <bamit/all.hpp>
 
 // Recursive function to go through the tree and check the medians.
-void check_medians(std::unique_ptr<bamit::IntervalNode> const & root, int level, int pos,
-                   std::vector<bamit::Position> const & expected_medians)
+void check_tree(std::unique_ptr<bamit::IntervalNode> const & root, int level, int pos,
+                   std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> const & expected_values)
 {
-    if (std::get<0>(expected_medians[pow(2, level) - 1 + pos]) != -1)
+    EXPECT_EQ(std::make_tuple(root->get_chr(), root->get_start(), root->get_end()), expected_values[pow(2, level) - 1 + pos]);
+    if(root->get_left_node())
     {
-        EXPECT_EQ(root->get_median(), expected_medians[pow(2, level) - 1 + pos]);
-        if(root->get_left_node())
-        {
-            check_medians(root->get_left_node(), level + 1, (pos * 2), expected_medians);
-        }
-        if(root->get_right_node())
-        {
-            check_medians(root->get_right_node(), level + 1, (pos * 2) + 1, expected_medians);
-        }
+        check_tree(root->get_left_node(), level + 1, (pos * 2), expected_values);
+    }
+    if(root->get_right_node())
+    {
+        check_tree(root->get_right_node(), level + 1, (pos * 2) + 1, expected_values);
     }
 
 }
 
 TEST(tree_construct, simulated_chr1_small_golden)
 {
-    // Construct Tree
-    using my_fields = seqan3::fields<seqan3::field::id,
-                                     seqan3::field::ref_id,
-                                     seqan3::field::ref_offset,
-                                     seqan3::field::cigar,
-                                     seqan3::field::seq>;
-
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
     bamit::parse_file(input, records);
 
@@ -39,30 +29,27 @@ TEST(tree_construct, simulated_chr1_small_golden)
     bamit::construct_tree(root, records);
 
     // Test Tree
-    std::vector<bamit::Position> expected_medians{std::make_pair(0, 944), std::make_pair(0, 467), std::make_pair(0, 1397),
-                                                 std::make_pair(0, 257), std::make_pair(0, 676), std::make_pair(0, 1132),
-                                                 std::make_pair(0, 1664), std::make_pair(0, 140), std::make_pair(0, 363),
-                                                 std::make_pair(0, 571), std::make_pair(0, 802), std::make_pair(0, 1032),
-                                                 std::make_pair(0, 1257), std::make_pair(0, 1531), std::make_pair(0, 1822),
-                                                 std::make_pair(0, 77), std::make_pair(0, 197), std::make_pair(-1, 0),
-                                                 std::make_pair(0, 414), std::make_pair(0, 519), std::make_pair(0, 624),
-                                                 std::make_pair(0, 730), std::make_pair(0, 886), std::make_pair(-1, 0),
-                                                 std::make_pair(-1, 0), std::make_pair(0, 1194), std::make_pair(0, 1323),
-                                                 std::make_pair(0, 1464), std::make_pair(0, 1593), std::make_pair(0, 1742),
-                                                 std::make_pair(0, 1928)};
-    check_medians(root, 0, 0, expected_medians);
+    // Compare chr, start, and end for each node.
+    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> expected_values{
+        std::make_tuple(0, 849, 1016), std::make_tuple(0, 368, 561), std::make_tuple(0, 1310, 1495),
+        std::make_tuple(0, 157, 357), std::make_tuple(0, 575, 775), std::make_tuple(0, 1031, 1232),
+        std::make_tuple(0, 1603, 1760), std::make_tuple(0, 43, 231), std::make_tuple(0, 262, 453),
+        std::make_tuple(0, 472, 665), std::make_tuple(0, 702, 902), std::make_tuple(0, 946, 1119),
+        std::make_tuple(0, 1156, 1354), std::make_tuple(0, 1443, 1617), std::make_tuple(0, 1725, 1920),
+        std::make_tuple(0, 18, 137), std::make_tuple(0, 146, 248), std::make_tuple(0, 0, 0),
+        std::make_tuple(0, 364, 465), std::make_tuple(0, 469, 570), std::make_tuple(0, 574, 675),
+        std::make_tuple(0, 677, 783), std::make_tuple(0, 830, 942), std::make_tuple(0, 0, 0),
+        std::make_tuple(0, 0, 0), std::make_tuple(0, 1135, 1254), std::make_tuple(0, 1258, 1388),
+        std::make_tuple(0, 1400, 1529), std::make_tuple(0, 1534, 1653), std::make_tuple(0, 1669, 1816),
+        std::make_tuple(0, 1842, 2014)};
+    check_tree(root, 0, 0, expected_values);
+
+    std::filesystem::remove(input.replace_extension("bam.bit"));
 }
 
 TEST(tree_construct, simulated_mult_chr_small_golden)
 {
-    // Construct Tree
-    using my_fields = seqan3::fields<seqan3::field::id,
-                                     seqan3::field::ref_id,
-                                     seqan3::field::ref_offset,
-                                     seqan3::field::cigar,
-                                     seqan3::field::seq>;
-
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
     bamit::parse_file(input, records);
 
@@ -70,19 +57,22 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
     bamit::construct_tree(root, records);
 
 
-    std::vector<bamit::Position> expected_medians{std::make_pair(1, 291), std::make_pair(0, 502), std::make_pair(2, 211),
-                                                  std::make_pair(0, 283), std::make_pair(1, 124), std::make_pair(1, 576),
-                                                  std::make_pair(2, 421), std::make_pair(0, 130), std::make_pair(0, 388),
-                                                  std::make_pair(0, 623), std::make_pair(1, 209), std::make_pair(1, 442),
-                                                  std::make_pair(2, 105), std::make_pair(2, 314), std::make_pair(2, 538),
-                                                  std::make_pair(0, 71), std::make_pair(0, 196), std::make_pair(0, 336),
-                                                  std::make_pair(0, 448), std::make_pair(0, 563), std::make_pair(1, 59),
-                                                  std::make_pair(-1, 0), std::make_pair(-1, 0), std::make_pair(1, 364),
-                                                  std::make_pair(1, 509), std::make_pair(2, 50), std::make_pair(2, 158),
-                                                  std::make_pair(-1, 0), std::make_pair(-1, 0), std::make_pair(2, 485),
-                                                  std::make_pair(2, 603)};
+    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> expected_values{
+        std::make_tuple(1, 193, 381), std::make_tuple(0, 404, 601), std::make_tuple(2, 113, 288),
+        std::make_tuple(0, 182, 384), std::make_tuple(1, 38, 220), std::make_tuple(1, 476, 677),
+        std::make_tuple(2, 321, 522), std::make_tuple(0, 31, 205), std::make_tuple(0, 287, 489),
+        std::make_tuple(0, 505, 655), std::make_tuple(1, 130, 289), std::make_tuple(1, 385, 539),
+        std::make_tuple(2, 24, 203), std::make_tuple(2, 220, 408), std::make_tuple(2, 437, 614),
+        std::make_tuple(0, 14, 128), std::make_tuple(0, 134, 259), std::make_tuple(0, 286, 387),
+        std::make_tuple(0, 398, 499), std::make_tuple(0, 0, 0), std::make_tuple(1, 6, 113),
+        std::make_tuple(0, 0, 0), std::make_tuple(0, 0, 0), std::make_tuple(1, 295, 434),
+        std::make_tuple(1, 446, 572), std::make_tuple(2, 0, 101), std::make_tuple(2, 108, 209),
+        std::make_tuple(0, 0, 0), std::make_tuple(0, 0, 0), std::make_tuple(2, 434, 537),
+        std::make_tuple(2, 539, 667)};
     // Test Tree
-    check_medians(root, 0, 0, expected_medians);
+    check_tree(root, 0, 0, expected_values);
+
+    std::filesystem::remove(input.replace_extension("bam.bit"));
 }
 
 TEST(tree_construct, unsorted)
@@ -96,7 +86,7 @@ TEST(tree_construct, unsorted)
                     "test1\t16\ttestchr\t1\t60\t10M\t=\t1\t0\tGCGCGCGCGC\tFFFFFFFFFF\n";
     unsorted_sam.close();
 
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     EXPECT_THROW(bamit::parse_file(unsorted_sam_path, records), seqan3::format_error);
 
     std::filesystem::remove(unsorted_sam_path);

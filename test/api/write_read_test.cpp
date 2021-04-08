@@ -18,7 +18,7 @@ TEST(write_read_test, write_read_test)
         // Initialize variables for writing.
         std::ofstream out{tmp, std::ios_base::binary | std::ios_base::out};
         std::unique_ptr<bamit::IntervalNode> root(nullptr);
-        std::vector<bamit::Record> records{};
+        std::vector<std::vector<bamit::Record>> records{};
         cereal::BinaryOutputArchive ar(out);
 
         bamit::parse_file(input, records);
