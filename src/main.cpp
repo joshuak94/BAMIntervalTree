@@ -119,7 +119,7 @@ int const parse_overlap_query(bamit::Position & start,
 
 int run_index(std::unique_ptr<bamit::IntervalNode> & root, std::filesystem::path const & input)
 {
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     bamit::parse_file(input, records);
 
     seqan3::debug_stream << "Creating Interval Tree.\n";

@@ -42,8 +42,8 @@ auto properly_mapped = std::views::filter([] (auto const & rec)
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
-    Position start, end;
-    std::streampos file_offset{-1};
+    uint32_t start, end;
+    std::streamoff file_offset{-1};
 
     /*!\name Constructors, destructor and assignment
      * \{
@@ -55,16 +55,10 @@ struct Record
     Record & operator=(Record &&)             = default; //!< Defaulted.
     ~Record()                                 = default; //!< Defaulted.
      //!\}
-    Record(Position start_i, Position end_i, std::streampos file_offset_i) :
+    Record(uint32_t start_i, uint32_t end_i, std::streamoff file_offset_i) :
         start{std::move(start_i)},
         end{std::move(end_i)},
         file_offset{std::move(file_offset_i)} {}
-
-    template <class Archive>
-    void serialize(Archive & ar)
-    {
-        ar(start, end);
-    }
 
     /*!
        \brief Compare two Record objects and return true if they are equal.
@@ -142,7 +136,7 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
    \param record_list An empty vector which will store all of the records.
 */
 void parse_file(std::filesystem::path const & input_path,
-                std::vector<Record> & record_list)
+                std::vector<std::vector<Record>> & record_list)
 {
     sam_file_input_type input{input_path};
 
@@ -152,12 +146,25 @@ void parse_file(std::filesystem::path const & input_path,
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
     }
 
+    std::vector<Record> cur_records{};
+    int32_t cur_index{0};
     for (auto const & r : input | properly_mapped)
     {
-        record_list.emplace_back(std::make_tuple(r.reference_id().value(), r.reference_position().value()),
-                                 std::make_tuple(r.reference_id().value(), r.reference_position().value() +
-                                                                           get_length(r.cigar_sequence())),
+        int32_t ref_id = r.reference_id().value();
+        int32_t position = r.reference_position().value();
+        if (ref_id != cur_index)
+        {
+            if (!cur_records.empty())
+            {
+                record_list.push_back(cur_records);
+                cur_records.clear();
+            }
+            cur_index = ref_id;
+        }
+        cur_records.emplace_back(r.reference_position().value(),
+                                 r.reference_position().value() + get_length(r.cigar_sequence()),
                                  r.file_offset());
     }
+    record_list.push_back(cur_records);
 }
 }
