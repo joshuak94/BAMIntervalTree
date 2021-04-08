@@ -244,7 +244,7 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param results The list of records overlapping the search.
+   \param outname The output filename.
 */
 void get_records(sam_file_input_type & input,
                  std::unique_ptr<IntervalNode> const & root,
