@@ -206,7 +206,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
    \param end The end position of the search.
    \param offstream_pos The resulting offstream position.
 */
-void overlap(std::unique_ptr<IntervalNode> const & root,
+void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
              std::streamoff & offstream_pos)
@@ -217,23 +217,21 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
     }
 
     Position cur_median = root->get_median();
+    offstream_pos = root->get_file_offset();
     // If the current median is overlapping the read, take the current offset as result and search the left further.
-    if (cur_median >= start && cur_median <= end)
+    if (cur_median > start && cur_median <= end)
     {
-        offstream_pos = root->get_file_offset();
-        overlap(root->get_left_node(), start, end, offstream_pos);
+        get_overlap_file_offset(root->get_left_node(), start, end, offstream_pos);
     }
     // If current median is to the right of the overlap, go to the left tree.
     else if (end < cur_median)
     {
-        offstream_pos = root->get_file_offset();
-        overlap(root->get_left_node(), start, end, offstream_pos);
+        get_overlap_file_offset(root->get_left_node(), start, end, offstream_pos);
     }
     // If current median is to the left of the overlap, go to the right tree.
     else if (start > cur_median)
     {
-        offstream_pos = root->get_file_offset();
-        overlap(root->get_right_node(), start, end, offstream_pos);
+        get_overlap_file_offset(root->get_right_node(), start, end, offstream_pos);
     }
 }
 
@@ -245,14 +243,14 @@ void overlap(std::unique_ptr<IntervalNode> const & root,
    \param end The end position of the search.
    \param outname The output filename.
 */
-void get_records(sam_file_input_type & input,
+void get_overlap_records(sam_file_input_type & input,
                  std::unique_ptr<IntervalNode> const & root,
                  Position const & start,
                  Position const & end,
                  std::filesystem::path & outname)
 {
     std::streamoff offstream_pos{-1};
-    overlap(root, start, end, offstream_pos);
+    get_overlap_file_offset(root, start, end, offstream_pos);
 
     input.seek(offstream_pos);
 

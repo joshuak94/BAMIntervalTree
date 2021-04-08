@@ -23,7 +23,7 @@ TEST(write_read_test, write_read_test)
 
         bamit::parse_file(input, records);
         bamit::construct_tree(root, records);
-        bamit::overlap(root, start, end, result);
+        bamit::get_overlap_file_offset(root, start, end, result);
 
         // Write tree to output.
         bamit::write(root, ar);
@@ -37,7 +37,7 @@ TEST(write_read_test, write_read_test)
 
         // Read tree from input.
         bamit::read(in_node, ar);
-        bamit::overlap(in_node, start, end, result_after_reading);
+        bamit::get_overlap_file_offset(in_node, start, end, result_after_reading);
         in.close();
     }
 

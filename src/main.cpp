@@ -50,7 +50,7 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
                       "The name of the SAM/BAM file to query.", seqan3::option_spec::required,
                       seqan3::input_file_validator{{"sam", "bam"}});
     parser.add_option(options.out_file, 'o', "output_sam",
-                      "The SAM file, where the results should be stored.", seqan3::option_spec::required,
+                      "The SAM file, where the results should be stored.", seqan3::option_spec::standard,
                       seqan3::input_file_validator{{"sam"}});
     parser.add_option(options.start, 's', "start",
                       "The start of the interval to query, in the format chrA,posA."
@@ -159,7 +159,7 @@ int parse_index(seqan3::argument_parser & parser)
     return 0;
 }
 
-int parse_overlap(seqan3::argument_parser & parser)
+int parse_get_overlap_file_offset(seqan3::argument_parser & parser)
 {
     OverlapOptions options{};
 
@@ -202,7 +202,7 @@ int parse_overlap(seqan3::argument_parser & parser)
         return -1;
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
-    bamit::get_records(input, root, start, end, options.out_file);
+    bamit::get_overlap_records(input, root, start, end, options.out_file);
 
     return 0;
 }
@@ -230,7 +230,7 @@ int main(int argc, char ** argv)
     if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-index"})
         return parse_index(sub_parser);
     else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-overlap"})
-        return parse_overlap(sub_parser);
+        return parse_get_overlap_file_offset(sub_parser);
     else
         seqan3::debug_stream << "Unhandled subparser named " << sub_parser.info.app_name << '\n';
 
