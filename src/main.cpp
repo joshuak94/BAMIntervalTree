@@ -199,7 +199,7 @@ int parse_overlap(seqan3::argument_parser & parser)
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
     std::streamoff result{-1};
-    bamit::overlap(input, root, start, end, result);
+    bamit::overlap(root, start, end, result);
     seqan3::debug_stream << result << "\n";
 
     return 0;
