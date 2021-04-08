@@ -159,7 +159,7 @@ int parse_index(seqan3::argument_parser & parser)
     return 0;
 }
 
-int parse_get_overlap_file_offset(seqan3::argument_parser & parser)
+int parse_overlap(seqan3::argument_parser & parser)
 {
     OverlapOptions options{};
 
@@ -230,7 +230,7 @@ int main(int argc, char ** argv)
     if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-index"})
         return parse_index(sub_parser);
     else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-overlap"})
-        return parse_get_overlap_file_offset(sub_parser);
+        return parse_overlap(sub_parser);
     else
         seqan3::debug_stream << "Unhandled subparser named " << sub_parser.info.app_name << '\n';
 

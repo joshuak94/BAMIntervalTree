@@ -219,7 +219,7 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & root,
     Position cur_median = root->get_median();
     offstream_pos = root->get_file_offset();
     // If the current median is overlapping the read or to its right, take the current offset as result and search the
-    // left tree further.
+    // left tree further. If the current median equals start, the search ends.
     if (cur_median > start)
     {
         get_overlap_file_offset(root->get_left_node(), start, end, offstream_pos);
