@@ -96,8 +96,8 @@ int const parse_overlap_query(bamit::Position & start,
     }
 
     // Convert the start and end strings to integers.
-    int32_t start_position{};
-    int32_t end_position{};
+    uint32_t start_position{};
+    uint32_t end_position{};
     try
     {
         start_position = std::stoi(options.start.substr(start_split + 1));
@@ -110,8 +110,8 @@ int const parse_overlap_query(bamit::Position & start,
     }
 
     // Convert query string into two Positions.
-    int32_t start_ref_id = start_ref_id_it - ref_ids.begin();
-    int32_t end_ref_id = end_ref_id_it - ref_ids.begin();
+    uint32_t start_ref_id = start_ref_id_it - ref_ids.begin();
+    uint32_t end_ref_id = end_ref_id_it - ref_ids.begin();
     start = std::make_pair(start_ref_id, start_position);
     end = std::make_pair(end_ref_id, end_position);
     return 0;
@@ -127,7 +127,7 @@ int run_index(std::unique_ptr<bamit::IntervalNode> & root, std::filesystem::path
     seqan3::debug_stream << "Writing to file.\n";
     {
         std::filesystem::path index_path{input};
-        index_path.replace_extension("bit");
+        index_path.replace_extension("bam.bit");
         std::ofstream out_file(index_path,
                                std::ios_base::binary | std::ios_base::out);
         cereal::BinaryOutputArchive archive(out_file);
@@ -146,7 +146,7 @@ int parse_index(seqan3::argument_parser & parser)
     // Parse the given arguments and catch possible errors.
     try
     {
-        parser.parse();                                               // trigger command line parsing
+        parser.parse();                                                 // trigger command line parsing
     }
     catch (seqan3::argument_parser_error const & ext)                   // catch user errors
     {
@@ -168,18 +168,18 @@ int parse_overlap(seqan3::argument_parser & parser)
     // Parse the given arguments and catch possible errors.
     try
     {
-      parser.parse();                                               // trigger command line parsing
+      parser.parse();                                                   // trigger command line parsing
     }
     catch (seqan3::argument_parser_error const & ext)                   // catch user errors
     {
-      seqan3::debug_stream << "[Error] " << ext.what() << '\n';       // customise your error message
+      seqan3::debug_stream << "[Error] " << ext.what() << '\n';         // customise your error message
       return -1;
     }
 
     bamit::sam_file_input_type input{options.input_path};
     std::filesystem::path index_path{options.input_path};
     std::unique_ptr<bamit::IntervalNode> root(nullptr);
-    index_path.replace_extension("bit");
+    index_path.replace_extension("bam.bit");
     if (!std::filesystem::exists(index_path))
     {
         run_index(root, options.input_path);
@@ -218,7 +218,7 @@ int main(int argc, char ** argv)
     // Parse the given arguments and catch possible errors.
     try
     {
-        top_level_parser.parse();                                               // trigger command line parsing
+        top_level_parser.parse();                                       // trigger command line parsing
     }
     catch (seqan3::argument_parser_error const & ext)                   // catch user errors
     {
