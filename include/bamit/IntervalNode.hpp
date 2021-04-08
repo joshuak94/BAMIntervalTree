@@ -201,7 +201,6 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 /*!
    \brief Find the file offstream position that is close to the start of the range by traversing the tree. The offstream
           position is guaranteed to be to the left of the start.
-   \param input The sam file input of type bamit::sam_file_input_type.
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
