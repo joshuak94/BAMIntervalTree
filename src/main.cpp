@@ -14,6 +14,7 @@ struct IndexOptions
 struct OverlapOptions
 {
     std::filesystem::path input_path{};
+    std::filesystem::path out_file{};
     std::string start{};
     std::string end{};
 };
@@ -48,6 +49,9 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
     parser.add_option(options.input_path, 'i', "input_bam",
                       "The name of the SAM/BAM file to query.", seqan3::option_spec::required,
                       seqan3::input_file_validator{{"sam", "bam"}});
+    parser.add_option(options.out_file, 'o', "output_sam",
+                      "The SAM file, where the results should be stored.", seqan3::option_spec::standard,
+                      seqan3::input_file_validator{{"sam"}});
     parser.add_option(options.start, 's', "start",
                       "The start of the interval to query, in the format chrA,posA."
                       " Note that when start and end are the same, this queries for reads overlapping a point.",
@@ -198,10 +202,8 @@ int parse_overlap(seqan3::argument_parser & parser)
         return -1;
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
-    std::vector<bamit::Record> results{};
-    bamit::overlap(input, root, start, end, results);
-    for (auto & r: results)
-        seqan3::debug_stream << r.start << " " << r.end << "\n";
+    bamit::get_overlap_records(input, root, start, end, options.out_file);
+
     return 0;
 }
 

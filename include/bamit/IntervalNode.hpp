@@ -199,18 +199,17 @@ void construct_tree(std::unique_ptr<IntervalNode> & node, std::vector<Record> co
 }
 
 /*!
-   \brief Find the records which overlap a given start and end position.
-   \param input The sam file input of type bamit::sam_file_input_type.
+   \brief Find the file offstream position that is close to the start of the range by traversing the tree. The offstream
+          position is guaranteed to be to the left of the start.
    \param root The root of the tree to search in.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param results The list of records overlapping the search.
+   \param offstream_pos The resulting offstream position.
 */
-void overlap(sam_file_input_type & input,
-             std::unique_ptr<IntervalNode> const & root,
+void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & root,
              Position const & start,
              Position const & end,
-             std::vector<Record> & results)
+             std::streamoff & offstream_pos)
 {
     if (!root)
     {
@@ -218,61 +217,53 @@ void overlap(sam_file_input_type & input,
     }
 
     Position cur_median = root->get_median();
-    // If the current median is overlapping the read, add all records from this node and search the left and right.
-    input.seek(root->get_file_offset());
-    std::vector<Record> current_reads{};
-
-    for (auto const & r : input | properly_mapped)
+    offstream_pos = root->get_file_offset();
+    // If the current median is overlapping the read or to its right, take the current offset as result and search the
+    // left tree further. If the current median equals start, the search ends.
+    if (cur_median > start)
     {
-        if (std::make_tuple(r.reference_id(), r.reference_position()) > cur_median)
+        get_overlap_file_offset(root->get_left_node(), start, end, offstream_pos);
+    }
+    // If current median is to the left of the overlap, go to the right tree.
+    else if (cur_median < start)
+    {
+        get_overlap_file_offset(root->get_right_node(), start, end, offstream_pos);
+    }
+}
+
+/*!
+   \brief Find the records which overlap a given start and end position.
+   \param input The sam file input of type bamit::sam_file_input_type.
+   \param root The root of the tree to search in.
+   \param start The start position of the search.
+   \param end The end position of the search.
+   \param outname The output filename.
+*/
+void get_overlap_records(sam_file_input_type & input,
+                 std::unique_ptr<IntervalNode> const & root,
+                 Position const & start,
+                 Position const & end,
+                 std::filesystem::path & outname)
+{
+    std::streamoff offstream_pos{-1};
+    get_overlap_file_offset(root, start, end, offstream_pos);
+
+    input.seek(offstream_pos);
+
+    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+    for (auto & r : input | properly_mapped)
+    {
+        if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
         {
             break;
         }
-        current_reads.emplace_back(std::make_tuple(r.reference_id().value(), r.reference_position().value()),
-                                   std::make_tuple(r.reference_id().value(), r.reference_position().value() +
-                                                                             get_length(r.cigar_sequence())),
-                                   r.file_offset());
-    }
-    if (cur_median >= start && cur_median <= end)
-    {
-        results.insert(std::end(results), std::begin(current_reads), std::end(current_reads));
-        overlap(input, root->get_left_node(), start, end, results);
-        overlap(input, root->get_right_node(), start, end, results);
-    }
-    // If current median is to the right of the overlap, sort reads in ascending order and add all reads which
-    // start before the overlap ends.
-    else if (end < cur_median)
-    {
-        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorStart());
-        for (auto const & r : current_reads)
+        if (std::make_tuple(r.reference_id(), r.reference_position().value() + get_length(r.cigar_sequence())) < start)
         {
-            if (r.start <= end)
-            {
-                results.push_back(r);
-            }
-            else
-            {
-                break;
-            }
+            continue;
         }
-        overlap(input, root->get_left_node(), start, end, results);
-    }
-    else if (start > cur_median)
-    {
-        std::sort(current_reads.begin(), current_reads.end(), RecordComparatorEnd());
-        for (auto const & r : current_reads)
-        {
-            if (r.end >= start)
-            {
-                results.push_back(r);
-            }
-            else
-            {
-                break;
-            }
-        }
-        overlap(input, root->get_right_node(), start, end, results);
-    }
+
+        fout.push_back(r);
+   }
 }
 
 template <class Archive>
