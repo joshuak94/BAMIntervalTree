@@ -287,56 +287,78 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
 /*!
    \brief Find the file offstream position that is close to the start of the range by traversing the tree. The offstream
           position is guaranteed to be to the left of the start.
-   \param root The root of the tree to search in.
+   \param node The current node to search.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param offstream_pos The resulting offstream position.
+   \param offset_pos The resulting offset position.
 */
-void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & root,
-             Position const & start,
-             Position const & end,
-             std::streamoff & offstream_pos)
+void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
+                             Position const & start,
+                             Position const & end,
+                             std::streamoff & offset_pos)
 {
-    if (!root)
+    if (!node)
     {
         return;
     }
 
-    Position cur_median = root->get_median();
-    offstream_pos = root->get_file_offset();
-    // If the current median is overlapping the read or to its right, take the current offset as result and search the
-    // left tree further. If the current median equals start, the search ends.
-    if (cur_median > start)
+    Position cur_start = std::make_tuple(node->get_chr(), node->get_start());
+    Position cur_end = std::make_tuple(node->get_chr(), node->get_end());
+    /*
+     * There are six possibilities:
+     * 1. The query interval is wholly to the left of the current start (end < cur_start).
+     * 2. The query interval is partially to the left of the current start (start < cur_start && end >= cur_start).
+     * 3. The query interval is contained within the current start and end (start >= cur_start && end <= cur_end).
+     * 4. The query interval contains the current start and end (start < cur_start && end > cur_end).
+     * 5. The query interval is partially to the right of the current end (start <= cur_end && end > cur_end).
+     * 6. The query interval is wholly to the right of the current end (start > cur_end).
+     *
+     * In case 1, do not store the file offset and search the left subtree.
+     * In cases 2 through 5, store the file offset and search the left subtree.
+     * In case 6, do not store the file offset and search the right subtree.
+    */
+    if (end < cur_start)
     {
-        get_overlap_file_offset(root->get_left_node(), start, end, offstream_pos);
+        get_overlap_file_offset(node->get_left_node(), start, end, offset_pos);
     }
-    // If current median is to the left of the overlap, go to the right tree.
-    else if (cur_median < start)
+    else if (start > cur_end)
     {
-        get_overlap_file_offset(root->get_right_node(), start, end, offstream_pos);
+        get_overlap_file_offset(node->get_right_node(), start, end, offset_pos);
+    }
+    else
+    {
+        offset_pos = node->get_file_offset();
+        get_overlap_file_offset(node->get_left_node(), start, end, offset_pos);
     }
 }
 
 /*!
    \brief Find the records which overlap a given start and end position.
    \param input The sam file input of type bamit::sam_file_input_type.
-   \param root The root of the tree to search in.
+   \param node The current node to search.
    \param start The start position of the search.
    \param end The end position of the search.
    \param outname The output filename.
 */
 void get_overlap_records(sam_file_input_type & input,
-                 std::unique_ptr<IntervalNode> const & root,
-                 Position const & start,
-                 Position const & end,
-                 std::filesystem::path & outname)
+                         std::unique_ptr<IntervalNode> const & node,
+                         Position const & start,
+                         Position const & end,
+                         std::filesystem::path const & outname)
 {
-    std::streamoff offstream_pos{-1};
-    get_overlap_file_offset(root, start, end, offstream_pos);
-
-    input.seek(offstream_pos);
+    std::streamoff offset_pos{-1};
+    get_overlap_file_offset(node, start, end, offset_pos);
 
     seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+
+    if (offset_pos == -1)
+    {
+        seqan3::debug_stream << "No overlapping reads found.\n";
+        return;
+    }
+
+    input.seek(offset_pos);
+
     for (auto & r : input | properly_mapped)
     {
         if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
