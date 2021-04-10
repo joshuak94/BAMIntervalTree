@@ -42,7 +42,7 @@ auto properly_mapped = std::views::filter([] (auto const & rec)
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
 {
-    uint32_t start, end;
+    uint32_t start{}, end{};
     std::streamoff file_offset{-1};
 
     /*!\name Constructors, destructor and assignment
@@ -146,20 +146,18 @@ void parse_file(std::filesystem::path const & input_path,
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
     }
 
+    // cur_index, ref_id, and position can never be a negative value because of the properly_mapped filter.
     std::vector<Record> cur_records{};
-    int32_t cur_index{0};
+    uint32_t cur_index{0};
     for (auto const & r : input | properly_mapped)
     {
-        int32_t ref_id = r.reference_id().value();
-        int32_t position = r.reference_position().value();
+        uint32_t ref_id = r.reference_id().value();
+        uint32_t position = r.reference_position().value();
         if (ref_id != cur_index)
         {
-            if (!cur_records.empty())
-            {
-                record_list.push_back(cur_records);
-                cur_records.clear();
-            }
-            cur_index = ref_id;
+            record_list.push_back(cur_records);
+            cur_records.clear();
+            ++cur_index;
         }
         cur_records.emplace_back(r.reference_position().value(),
                                  r.reference_position().value() + get_length(r.cigar_sequence()),
