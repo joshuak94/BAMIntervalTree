@@ -23,12 +23,14 @@ seqan3_require_test ()
 # The trick is here to provide a cmake file as a directory property that executes the build command.
 file (WRITE "${CMAKE_CURRENT_BINARY_DIR}/build_test_targets.cmake"
             "execute_process(COMMAND ${CMAKE_COMMAND} --build . --target api_test)\n"
-            "execute_process(COMMAND ${CMAKE_COMMAND} --build . --target cli_test)")
+            "execute_process(COMMAND ${CMAKE_COMMAND} --build . --target cli_test)\n"
+            "execute_process(COMMAND ${CMAKE_COMMAND} --build . --target benchmark_test)")
 set_directory_properties (PROPERTIES TEST_INCLUDE_FILE "${CMAKE_CURRENT_BINARY_DIR}/build_test_targets.cmake")
 
 # Define the test targets. All depending targets are built just before the test execution.
 add_custom_target (api_test)
 add_custom_target (cli_test)
+add_custom_target (benchmark_test)
 
 # Test executables and libraries should not mix with the application files.
 unset (CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
@@ -55,6 +57,8 @@ macro (add_app_test test_filename test_alternative)
         add_dependencies (cli_test ${target})
     elseif (${test_alternative} STREQUAL "API_TEST")
         add_dependencies (api_test ${target})
+    elseif (${test_alternative} STREQUAL "BENCHMARK_TEST")
+        add_dependencies (benchmark_test ${target})
     endif ()
 
     # Generate and set the test name.
@@ -81,9 +85,15 @@ macro (add_cli_test test_filename)
     add_app_test (${test_filename} CLI_TEST)
 endmacro ()
 
+# A macro that adds a benchmark test.
+macro (add_benchmark_test test_filename)
+    add_app_test (${test_filename} BENCHMARK_TEST)
+endmacro ()
+
 # Fetch data and add the tests.
 include (data/datasources.cmake)
 add_subdirectory (api)
 add_subdirectory (cli)
+add_subdirectory (benchmark)
 
 message (STATUS "${FontBold}You can run `make test` to build and run tests.${FontReset}")
