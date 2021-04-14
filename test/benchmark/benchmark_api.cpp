@@ -61,13 +61,17 @@ TEST(benchmark, construct_and_search)
 {
     std::filesystem::path tmp_dir = std::filesystem::temp_directory_path();     // get the temp directory
     std::filesystem::path result_sam_path{tmp_dir/"result.sam"};
-    bamit::sam_file_input_type input_bam{DATADIR"large_file.bam"};
+    std::filesystem::path large_file{DATADIR"large_file.bam"};
+    if (!std::filesystem::exists(large_file))
+    {
+        return;
+    }
+    bamit::sam_file_input_type input_bam{large_file};
 
     // Construct tree.
     std::unique_ptr<bamit::IntervalNode> node{nullptr};
     std::vector<bamit::Record> records{};
-    std::filesystem::path input{DATADIR"large_file.bam"};
-    RUN(bamit::parse_file(input, records), "Parsing");
+    RUN(bamit::parse_file(large_file, records), "Parsing");
     RUN(bamit::construct_tree(node, records), "Construction");
 
     // Generate 100 overlaps.
