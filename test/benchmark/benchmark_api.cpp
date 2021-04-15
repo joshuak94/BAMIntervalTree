@@ -71,14 +71,13 @@ TEST(benchmark, construct_and_search)
     bamit::sam_file_input_type input_bam{large_file};
 
     // Construct tree.
-    std::unique_ptr<bamit::IntervalNode> node{nullptr};
-    std::vector<std::vector<bamit::Record>> records{};
-    RUN(bamit::parse_file(large_file, records), "Parsing");
-    RUN(bamit::construct_tree(node, records), "Construction");
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
+    RUN((node_list = bamit::construct_tree(input_bam)), "Construction");
 
     // Generate 100 overlaps.
     bamit::Position start, end;
     std::streamoff result{-1};
+    bamit::sam_file_input_type input_bam_2{large_file};
     for (int i = 0; i < 100; i++)
     {
         get_random_position(start, end, input_bam.header());
@@ -86,11 +85,8 @@ TEST(benchmark, construct_and_search)
                                 std::to_string(std::get<1>(start)) + "] - [" +
                                 std::to_string(std::get<0>(end)) + ", " +
                                 std::to_string(std::get<1>(end)) + "]"};
-        RUN(bamit::get_overlap_records(input_bam, node, start, end, result_sam_path), query);
-        RUN(bamit::get_overlap_file_offset(node, start, end, result), query);
+        RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end, result_sam_path), query);
+        RUN(bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result), query);
         std::filesystem::remove(result_sam_path);
     }
-
-    // Cleanup.
-    std::filesystem::remove(DATADIR"large_file.bit");
 }
