@@ -48,9 +48,11 @@ void get_random_position(bamit::Position & start, bamit::Position & end,
     uint32_t rand_chr_end = distr_end(gen); // Get end random chromosome, guaranteed to be >= start.
 
     std::uniform_int_distribution<> distr_pos_start(0, std::get<0>(header.ref_id_info[rand_chr_start]) - 1);
-    std::uniform_int_distribution<> distr_pos_end(0, std::get<0>(header.ref_id_info[rand_chr_end]) - 1);
-
     uint32_t rand_pos_start = distr_pos_start(gen);
+
+    // Get end position which is greater than or equal to start position.
+    uint32_t end_start = (rand_chr_start == rand_chr_end) ? rand_pos_start : 0;
+    std::uniform_int_distribution<> distr_pos_end(end_start, std::get<0>(header.ref_id_info[rand_chr_end]) - 1);
     uint32_t rand_pos_end = distr_pos_end(gen);
 
     start = std::make_tuple(rand_chr_start, rand_pos_start);
@@ -70,7 +72,7 @@ TEST(benchmark, construct_and_search)
 
     // Construct tree.
     std::unique_ptr<bamit::IntervalNode> node{nullptr};
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     RUN(bamit::parse_file(large_file, records), "Parsing");
     RUN(bamit::construct_tree(node, records), "Construction");
 
