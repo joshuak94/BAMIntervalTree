@@ -8,7 +8,7 @@
 TEST(get_overlap_records, simulated_chr1_small_golden)
 {
     // Construct Tree
-    std::vector<bamit::Record> records{};
+    std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
     bamit::parse_file(input, records);
 
@@ -28,4 +28,5 @@ TEST(get_overlap_records, simulated_chr1_small_golden)
     EXPECT_RANGE_EQ(expected, result);
 
      std::filesystem::remove(result_sam_path);
+     std::filesystem::remove(input.replace_extension("bam.bit"));
 }
