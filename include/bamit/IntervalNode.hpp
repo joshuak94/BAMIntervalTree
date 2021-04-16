@@ -326,9 +326,25 @@ void get_overlap_records(sam_file_input_type & input,
     std::streamoff offset_pos{-1};
 
     // Look for the file offset using the tree for the starting chromosome.
-    get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), offset_pos);
+    if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
+    {
+        get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), offset_pos);
+    }
+    else // Searching across multiple chromosomes.
+    {
+        for (uint32_t i = std::get<0>(start); i < std::get<0>(end); ++i)
+        {
+            // Start at given start only for the first chromosome, otherwise start searching from 0.
+            uint32_t start_position = std::get<0>(start) == i ? std::get<1>(start) : 0;
+            // End at given end if at the last chromosome, otherwise end at end of chromosome.
+            uint32_t end_position = std::get<0>(end) == i ? std::get<1>(end) : std::numeric_limits<uint32_t>::max();
+            get_overlap_file_offset(node_list[i], start_position, end_position, offset_pos);
 
-    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+            // If we find the left-most offset we can stop. Otherwise we have to check the next tree.
+            if (offset_pos != -1)
+                break;
+        }
+    }
 
     if (offset_pos == -1)
     {
@@ -336,6 +352,7 @@ void get_overlap_records(sam_file_input_type & input,
         return;
     }
 
+    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
     input.seek(offset_pos);
 
     for (auto & r : input | properly_mapped)
