@@ -164,7 +164,6 @@ uint32_t calculate_median(std::vector<Record> const & records_i)
    \brief Construct an interval tree given a set of records.
    \param node The current node to fill.
    \param records_i The list of records to create the tree over.
-   \param offset How many chromosomes are to the left of the current chromosome?
 */
 void construct_tree(std::unique_ptr<IntervalNode> & node,
                     std::vector<Record> & records_i)
@@ -312,7 +311,7 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
 /*!
    \brief Find the records which overlap a given start and end position.
    \param input The sam file input of type bamit::sam_file_input_type.
-   \param node The current node to search.
+   \param node_list The list of interval trees.
    \param start The start position of the search.
    \param end The end position of the search.
    \param outname The output filename.
@@ -335,12 +334,16 @@ void get_overlap_records(sam_file_input_type & input,
         for (uint32_t i = std::get<0>(start); i < std::get<0>(end); ++i)
         {
             // Start at given start only for the first chromosome, otherwise start searching from 0.
+            // For the first chromosome, we want the actual start position of the query. If no reads
+            // in the chromosome are in our query, we want to search the tree of the next chromosome
+            // starting from the beginning.
             uint32_t start_position = std::get<0>(start) == i ? std::get<1>(start) : 0;
             // End at given end if at the last chromosome, otherwise end at end of chromosome.
             uint32_t end_position = std::get<0>(end) == i ? std::get<1>(end) : std::numeric_limits<uint32_t>::max();
             get_overlap_file_offset(node_list[i], start_position, end_position, offset_pos);
 
-            // If we find the left-most offset we can stop. Otherwise we have to check the next tree.
+            // If we find the left-most offset we can stop. Otherwise we have to check the next tree if
+            // the overlap spans more than one chromosome.
             if (offset_pos != -1)
                 break;
         }
