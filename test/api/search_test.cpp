@@ -10,7 +10,7 @@ TEST(get_overlap_records, simulated_chr1_small_golden)
     // Construct Tree
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
     bamit::sam_file_input_type input_file{input};
-    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::construct_tree(input_file);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
     // Search Tree
     std::filesystem::path tmp_dir = std::filesystem::temp_directory_path();     // get the temp directory

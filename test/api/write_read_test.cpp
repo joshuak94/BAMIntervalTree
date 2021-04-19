@@ -21,7 +21,7 @@ TEST(write_read_test, write_read_test)
         std::vector<std::vector<bamit::Record>> records{};
         cereal::BinaryOutputArchive ar(out);
 
-        node_list = bamit::construct_tree(sam_in);
+        node_list = bamit::index(sam_in);
         bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result);
 
         // Write tree to output.

@@ -83,7 +83,7 @@ TEST(benchmark, construct_and_search)
 
     // Construct tree.
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
-    RUN((node_list = bamit::construct_tree(input_bam)), "Construction");
+    RUN((node_list = bamit::index(input_bam)), "Construction");
 
     // Generate 100 overlaps.
     bamit::Position start, end;

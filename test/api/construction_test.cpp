@@ -25,7 +25,7 @@ TEST(tree_construct, simulated_chr1_small_golden)
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
     bamit::sam_file_input_type input_file{input};
 
-    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::construct_tree(input_file);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
     // Test Tree
     // Compare chr, start, and end for each node.
@@ -52,26 +52,22 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
     bamit::sam_file_input_type input_file{input};
 
-    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::construct_tree(input_file);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
 
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> expected_values{
-        std::make_tuple(1, 193, 381), std::make_tuple(0, 404, 601), std::make_tuple(2, 113, 288),
-        std::make_tuple(0, 182, 384), std::make_tuple(1, 38, 220), std::make_tuple(1, 476, 677),
-        std::make_tuple(2, 321, 522), std::make_tuple(0, 31, 205), std::make_tuple(0, 287, 489),
-        std::make_tuple(0, 505, 655), std::make_tuple(1, 130, 289), std::make_tuple(1, 385, 539),
-        std::make_tuple(2, 24, 203), std::make_tuple(2, 220, 408), std::make_tuple(2, 437, 614),
-        std::make_tuple(0, 14, 128), std::make_tuple(0, 134, 259), std::make_tuple(0, 286, 387),
-        std::make_tuple(0, 398, 499), std::make_tuple(0, 0, 0), std::make_tuple(1, 6, 113),
-        std::make_tuple(0, 0, 0), std::make_tuple(0, 0, 0), std::make_tuple(1, 295, 434),
-        std::make_tuple(1, 446, 572), std::make_tuple(2, 0, 101), std::make_tuple(2, 108, 209),
-        std::make_tuple(0, 0, 0), std::make_tuple(0, 0, 0), std::make_tuple(2, 434, 537),
-        std::make_tuple(2, 539, 667)};
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t>>> expected_values{
+        {std::make_tuple(286, 469), std::make_tuple(134,322), std::make_tuple(440,625), std::make_tuple(14, 205),
+         std::make_tuple(228, 384), std::make_tuple(388, 510), std::make_tuple(529, 655)},
+        {std::make_tuple(174, 369), std::make_tuple(62, 251), std::make_tuple(408, 595), std::make_tuple(6, 146),
+         std::make_tuple(152, 266), std::make_tuple(295, 434), std::make_tuple(497, 677), std::make_tuple(0, 0),
+         std::make_tuple(0, 0), std::make_tuple(0, 0), std::make_tuple(0, 0), std::make_tuple(280, 381),
+         std::make_tuple(385, 486), std::make_tuple(0, 0), std::make_tuple(0, 0)},
+        {std::make_tuple(231, 433), std::make_tuple(54, 248), std::make_tuple(402, 603), std::make_tuple(0, 153),
+         std::make_tuple(156, 328), std::make_tuple(334, 478), std::make_tuple(511, 667)}};
     // Test Tree
-    // check_tree(root, 0, 0, expected_values);
-    for (auto const & node : node_list)
+    for (size_t i = 0; i < node_list.size(); ++i)
     {
-        node->print(0);
+        check_tree(node_list[i], 0, 0, expected_values[i]);
     }
 
     std::filesystem::remove(input.replace_extension("bam.bit"));
@@ -89,7 +85,7 @@ TEST(tree_construct, unsorted)
     unsorted_sam.close();
 
     bamit::sam_file_input_type input_file{unsorted_sam_path};
-    EXPECT_THROW(bamit::construct_tree(input_file), seqan3::format_error);
+    EXPECT_THROW(bamit::index(input_file), seqan3::format_error);
 
     std::filesystem::remove(unsorted_sam_path);
 }

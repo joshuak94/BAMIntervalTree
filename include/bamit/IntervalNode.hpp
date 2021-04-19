@@ -143,8 +143,6 @@ public:
 
    The median is calculated by sorting all of the starts and ends from a list of records. Since each record
    has a start and end, the list is an even length and the median is the average of the middle two positions.
-   If the middle two positions are from the same chromsome, then they are averaged. If they're from two different
-   chromosomes then averaging is not possible and the right-most is taken.
 */
 uint32_t calculate_median(std::vector<Record> const & records_i)
 {
@@ -224,7 +222,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
    \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
            chromosome.
 */
-std::vector<std::unique_ptr<IntervalNode>> construct_tree(sam_file_input_type & input_file)
+std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file)
 {
     // First make sure alingment file is sorted by coordinate.
     if (input_file.header().sorting != "coordinate")

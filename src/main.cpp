@@ -123,7 +123,7 @@ int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, std
     bamit::sam_file_input_type input_file{input};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
-    node_list = bamit::construct_tree(input_file);
+    node_list = bamit::index(input_file);
     seqan3::debug_stream << "Writing to file.\n";
     {
         std::filesystem::path index_path{input};
