@@ -21,20 +21,31 @@ void printTimeMessage(std::string msg)
 void startTimeMessage(std::string msg)
 {
     time(&_t1);
-    _m1 = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
     printTimeMessage("[START] " + msg);
 }
 
 void endTimeMessage(std::string msg)
 {
     using std::chrono::operator""ms;
+    using std::chrono::operator""us;
     time(&_t2);
-    _m2 = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    auto difference = std::chrono::duration_cast<std::chrono::milliseconds>(_m2 - _m1);
-    if (difference < 10000ms)
-        printTimeMessage("[END] " + msg + " (" + std::to_string(difference.count()) + " milliseconds.)");
+    _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+    auto difference = std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
+    if (difference < 1000us)
+    {
+        printTimeMessage("[END] " + msg + " (" + std::to_string(difference.count()) + " microseconds.)");
+    }
+    else if (difference >= 1000us && difference < 1000ms)
+    {
+        printTimeMessage("[END] " + msg + " (" +
+                         std::to_string((std::chrono::duration_cast<std::chrono::milliseconds>(difference)).count()) +
+                         " milliseconds.)");
+    }
     else
+    {
         printTimeMessage("[END] " + msg + " (" + std::to_string((int)difftime(_t2,_t1)) + " seconds.)");
+    }
 }
 
 void get_random_position(bamit::Position & start, bamit::Position & end,
@@ -71,14 +82,13 @@ TEST(benchmark, construct_and_search)
     bamit::sam_file_input_type input_bam{large_file};
 
     // Construct tree.
-    std::unique_ptr<bamit::IntervalNode> node{nullptr};
-    std::vector<std::vector<bamit::Record>> records{};
-    RUN(bamit::parse_file(large_file, records), "Parsing");
-    RUN(bamit::construct_tree(node, records), "Construction");
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
+    RUN((node_list = bamit::index(input_bam)), "Construction");
 
     // Generate 100 overlaps.
     bamit::Position start, end;
     std::streamoff result{-1};
+    bamit::sam_file_input_type input_bam_2{large_file};
     for (int i = 0; i < 100; i++)
     {
         get_random_position(start, end, input_bam.header());
@@ -86,11 +96,10 @@ TEST(benchmark, construct_and_search)
                                 std::to_string(std::get<1>(start)) + "] - [" +
                                 std::to_string(std::get<0>(end)) + ", " +
                                 std::to_string(std::get<1>(end)) + "]"};
-        RUN(bamit::get_overlap_records(input_bam, node, start, end, result_sam_path), query);
-        RUN(bamit::get_overlap_file_offset(node, start, end, result), query);
+        RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end, result_sam_path),
+            query + " writing");
+        RUN(bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result),
+            query + " offest");
         std::filesystem::remove(result_sam_path);
     }
-
-    // Cleanup.
-    std::filesystem::remove(DATADIR"large_file.bit");
 }

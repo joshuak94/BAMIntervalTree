@@ -17,27 +17,26 @@ TEST(write_read_test, write_read_test)
     {
         // Initialize variables for writing.
         std::ofstream out{tmp, std::ios_base::binary | std::ios_base::out};
-        std::unique_ptr<bamit::IntervalNode> root(nullptr);
+        std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
         std::vector<std::vector<bamit::Record>> records{};
         cereal::BinaryOutputArchive ar(out);
 
-        bamit::parse_file(input, records);
-        bamit::construct_tree(root, records);
-        bamit::get_overlap_file_offset(root, start, end, result);
+        node_list = bamit::index(sam_in);
+        bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result);
 
         // Write tree to output.
-        bamit::write(root, ar);
+        bamit::write(node_list, ar);
         out.close();
     }
     {
         // Initialize variables for reading.
         std::ifstream in{tmp, std::ios_base::binary | std::ios_base::in};
-        std::unique_ptr<bamit::IntervalNode> in_node = std::make_unique<bamit::IntervalNode>();
+        std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
         cereal::BinaryInputArchive ar(in);
 
         // Read tree from input.
-        bamit::read(in_node, ar);
-        bamit::get_overlap_file_offset(in_node, start, end, result_after_reading);
+        bamit::read(node_list, ar);
+        bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result_after_reading);
         in.close();
     }
 

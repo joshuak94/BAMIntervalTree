@@ -18,7 +18,7 @@ namespace bamit
 class IntervalNode
 {
 private:
-    uint32_t start{}, end{}, chr{};
+    uint32_t start{}, end{};
     std::streamoff file_offset{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
@@ -71,15 +71,6 @@ public:
      }
 
      /*!
-        \brief Get the chromosome for the current node.
-        \return Returns the chromosom of the current node.
-     */
-     uint32_t const & get_chr()
-     {
-         return chr;
-     }
-
-     /*!
         \brief Get the file offset to the first read stored by this node.
         \return Returns a reference to a std::streamoff which can be used to seek to a file position.
      */
@@ -116,15 +107,6 @@ public:
      }
 
      /*!
-        \brief Set the chromosome value for the current node.
-        \param c The calculated chromosome based on the records stored by this node.
-     */
-     void set_chr(uint32_t c)
-     {
-         this->chr = c;
-     }
-
-     /*!
         \brief Print the Interval Tree starting at this node.
         \param level The level of the current node.
      */
@@ -132,7 +114,7 @@ public:
      {
          std::string indent(level, '\t');
          seqan3::debug_stream << indent << "Level: " << level << '\n' <<
-                                 indent << "Chromosome, start, end: " << chr << ", " << start << ", " << end << '\n' <<
+                                 indent << "Start, end: " << start << ", " << end << '\n' <<
                                  indent << "File offset: " << this->get_file_offset() << '\n';
          if (lNode)
          {
@@ -149,7 +131,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(this->chr, this->start, this->end, this->lNode, this->rNode, this->file_offset);
+        ar(this->start, this->end, this->lNode, this->rNode, this->file_offset);
     }
 
 };
@@ -161,127 +143,119 @@ public:
 
    The median is calculated by sorting all of the starts and ends from a list of records. Since each record
    has a start and end, the list is an even length and the median is the average of the middle two positions.
-   If the middle two positions are from the same chromsome, then they are averaged. If they're from two different
-   chromosomes then averaging is not possible and the right-most is taken.
 */
-std::tuple<uint32_t, uint32_t> calculate_median(std::vector<std::vector<Record>> const & records_i)
+uint32_t calculate_median(std::vector<Record> const & records_i)
 {
-    // Find out which chromosome to use for the median.
-    auto size_calculator = [](int32_t a, std::vector<Record> b) { return a + b.size(); };
-    int32_t middle = std::ceil(std::accumulate(records_i.cbegin(), records_i.cend(), 0, size_calculator) / 2.0);
-
-    uint32_t chr_index{};
-    while (middle > 0)
-    {
-        middle = middle - records_i[chr_index].size();
-        ++chr_index;
-    }
-    --chr_index;
-
-    // How many reads to the left and right of this chromosome?
-    uint32_t left = (records_i[chr_index] == records_i.front()) ?
-                    0 : std::accumulate(records_i.begin(), records_i.begin() + chr_index, 0, size_calculator);
-    uint32_t right = (records_i[chr_index] == records_i.back()) ?
-                     0 : std::accumulate(records_i.begin() + chr_index + 1, records_i.end(), 0, size_calculator);
-    uint32_t diff_left = left > right ? left - right : 0;
-    uint32_t diff_right = right > left ? right - left : 0;
-
     std::vector<uint32_t> values{};
-    // If diff_left > 0, can skip that many reads at end of chromosome.
-    // If diff_right > 0, can skip that many reads at start of chromosome.
-    // If they are both == 0, skip no reads.
-    values.reserve((records_i[chr_index].size() - diff_left - diff_right) * 2);
-    for (auto it = records_i[chr_index].cbegin() + diff_right; it != records_i[chr_index].cend() - diff_left; ++it)
+    values.reserve(records_i.size() * 2);
+    for (auto it = records_i.cbegin(); it != records_i.cend(); ++it)
     {
         values.push_back((*it).start);
         values.push_back((*it).end);
     }
     std::sort(values.begin(), values.end());
 
-    return std::make_tuple(chr_index, ((values[values.size() / 2] + values[(values.size() - 1) / 2]) / 2));
+    return (values[values.size() / 2] + values[(values.size() - 1) / 2]) / 2;
 }
 
 /*!
    \brief Construct an interval tree given a set of records.
    \param node The current node to fill.
    \param records_i The list of records to create the tree over.
-   \param offset How many chromosomes are to the left of the current chromosome?
 */
 void construct_tree(std::unique_ptr<IntervalNode> & node,
-                    std::vector<std::vector<Record>> & records_i,
-                    int32_t const offset = 0)
+                    std::vector<Record> & records_i)
 {
     // If there are no records, exit.
-    if (records_i.empty() || (records_i.front().empty() && records_i.back().empty()))
+    if (records_i.empty())
     {
         return;
     }
     // Set node to an empty IntervalNode pointer.
     node = std::make_unique<IntervalNode>();
 
-    // Calculate and set chromosome.
-    auto [cur_chr, cur_median] = calculate_median(records_i);
-    node->set_chr(cur_chr + offset);
+    // Calculate and set median.
+    auto cur_median = calculate_median(records_i);
 
     // Get reads which intersect median.
-    std::vector<std::vector<Record>> lRecords{};
-    std::vector<std::vector<Record>> rRecords{};
+    std::vector<Record> lRecords{};
+    std::vector<Record> rRecords{};
 
-    // Add initial empty vector to rRecords.
-    rRecords.emplace_back();
-    for (size_t i = 0; i < records_i.size(); ++i)
+    uint32_t start{0}, end{0};
+    for (auto & r : records_i)
     {
-        // Chromosome is less than current chromosome.
-        if (i < cur_chr)
+        // Read ends before the median.
+        if (r.end < cur_median)
         {
-            lRecords.push_back(std::move(records_i[i]));
+            // Push it back into the first empty vector.
+            lRecords.push_back(std::move(r));
         }
-        // Chromosome is greater than current chromosome.
-        else if (i > cur_chr)
+        // Read starts after the median.
+        else if (r.start > cur_median)
         {
-            rRecords.push_back(std::move(records_i[i]));
+            rRecords.push_back(std::move(r));
         }
-        // We are at current chromosome. Reads must be added to current node if they intersect interval.
-        // Otherwise, they should be added to the left/right trees.
+        // Read intersects the median. Only store file offset and start from the left-most read!
+        // End is always updated while the read intersects the median.
         else
         {
-            std::vector<Record> l_cur_chr{};
-            uint32_t start{0}, end{0};
-            for (auto & r : records_i[i])
+            if (node->get_file_offset() == -1)
             {
-                // Read ends before the median.
-                if (r.end < cur_median)
-                {
-                    // Push it back into the first empty vector.
-                    l_cur_chr.push_back(std::move(r));
-                }
-                // Read starts after the median.
-                else if (r.start > cur_median)
-                {
-                    rRecords[0].push_back(std::move(r));
-                }
-                // Read intersects the median. Only store file offset and start from the left-most read!
-                // End is always updated while the read intersects the median.
-                else
-                {
-                    if (node->get_file_offset() == -1)
-                    {
-                        node->set_file_offset(r.file_offset);
-                        start = r.start;
-                    }
-                    end = r.end;
-                }
+                node->set_file_offset(r.file_offset);
+                start = r.start;
             }
-            node->set_start(start);
-            node->set_end(end);
-            lRecords.push_back(std::move(l_cur_chr));
+            end = r.end;
         }
     }
+    node->set_start(start);
+    node->set_end(end);
 
     // Set left and right subtrees.
-    construct_tree(node->get_left_node(), lRecords, offset);
-    construct_tree(node->get_right_node(), rRecords, offset + cur_chr);
+    construct_tree(node->get_left_node(), lRecords);
+    construct_tree(node->get_right_node(), rRecords);
     return;
+}
+
+/*!
+   \brief Entry point into the recursive tree construction.
+   \param input_file The input file to construct the tree over.
+   \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
+           chromosome.
+*/
+std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file)
+{
+    // First make sure alingment file is sorted by coordinate.
+    if (input_file.header().sorting != "coordinate")
+    {
+        throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
+    }
+
+    // Vector containing result.
+    std::vector<std::unique_ptr<IntervalNode>> result{};
+
+    // List of records for a single chromosome.
+    std::vector<Record> cur_records;
+
+    uint32_t cur_index{0};
+    for (auto const & r : input_file | properly_mapped)
+    {
+        uint32_t ref_id = r.reference_id().value();
+        uint32_t position = r.reference_position().value();
+        if (ref_id != cur_index)
+        {
+            std::unique_ptr<IntervalNode> root{nullptr};
+            construct_tree(root, cur_records);
+            cur_records.clear();
+            result.push_back(std::move(root));
+            ++cur_index;
+        }
+        cur_records.emplace_back(position, position + get_length(r.cigar_sequence()), r.file_offset());
+    }
+    std::unique_ptr<IntervalNode> root{nullptr};
+    construct_tree(root, cur_records);
+    result.push_back(std::move(root));
+
+    return result;
 }
 
 /*!
@@ -293,8 +267,8 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
    \param offset_pos The resulting offset position.
 */
 void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
-                             Position const & start,
-                             Position const & end,
+                             uint32_t const & start,
+                             uint32_t const & end,
                              std::streamoff & offset_pos)
 {
     if (!node)
@@ -302,8 +276,8 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
         return;
     }
 
-    Position cur_start = std::make_tuple(node->get_chr(), node->get_start());
-    Position cur_end = std::make_tuple(node->get_chr(), node->get_end());
+    uint32_t cur_start = node->get_start();
+    uint32_t cur_end = node->get_end();
     /*
      * There are six possibilities:
      * 1. The query interval is wholly to the left of the current start (end < cur_start).
@@ -335,21 +309,43 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
 /*!
    \brief Find the records which overlap a given start and end position.
    \param input The sam file input of type bamit::sam_file_input_type.
-   \param node The current node to search.
+   \param node_list The list of interval trees.
    \param start The start position of the search.
    \param end The end position of the search.
    \param outname The output filename.
 */
 void get_overlap_records(sam_file_input_type & input,
-                         std::unique_ptr<IntervalNode> const & node,
+                         std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                          Position const & start,
                          Position const & end,
                          std::filesystem::path const & outname)
 {
     std::streamoff offset_pos{-1};
-    get_overlap_file_offset(node, start, end, offset_pos);
 
-    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+    // Look for the file offset using the tree for the starting chromosome.
+    if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
+    {
+        get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), offset_pos);
+    }
+    else // Searching across multiple chromosomes.
+    {
+        for (uint32_t i = std::get<0>(start); i < std::get<0>(end); ++i)
+        {
+            // Start at given start only for the first chromosome, otherwise start searching from 0.
+            // For the first chromosome, we want the actual start position of the query. If no reads
+            // in the chromosome are in our query, we want to search the tree of the next chromosome
+            // starting from the beginning.
+            uint32_t start_position = std::get<0>(start) == i ? std::get<1>(start) : 0;
+            // End at given end if at the last chromosome, otherwise end at end of chromosome.
+            uint32_t end_position = std::get<0>(end) == i ? std::get<1>(end) : std::numeric_limits<uint32_t>::max();
+            get_overlap_file_offset(node_list[i], start_position, end_position, offset_pos);
+
+            // If we find the left-most offset we can stop. Otherwise we have to check the next tree if
+            // the overlap spans more than one chromosome.
+            if (offset_pos != -1)
+                break;
+        }
+    }
 
     if (offset_pos == -1)
     {
@@ -357,6 +353,7 @@ void get_overlap_records(sam_file_input_type & input,
         return;
     }
 
+    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
     input.seek(offset_pos);
 
     for (auto & r : input | properly_mapped)
@@ -375,14 +372,14 @@ void get_overlap_records(sam_file_input_type & input,
 }
 
 template <class Archive>
-void write(std::unique_ptr<IntervalNode> const & node, Archive & archive)
+void write(std::vector<std::unique_ptr<IntervalNode>> const & node_list, Archive & archive)
 {
-    node->serialize(archive);
+    archive(node_list);
 }
 
 template <class Archive>
-void read(std::unique_ptr<IntervalNode> & node, Archive & archive)
+void read(std::vector<std::unique_ptr<IntervalNode>> & node_list, Archive & archive)
 {
-    node->serialize(archive);
+    archive(node_list);
 }
 }

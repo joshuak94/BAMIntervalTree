@@ -117,13 +117,13 @@ int const parse_overlap_query(bamit::Position & start,
     return 0;
 }
 
-int run_index(std::unique_ptr<bamit::IntervalNode> & root, std::filesystem::path const & input)
+int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, std::filesystem::path const & input)
 {
     std::vector<std::vector<bamit::Record>> records{};
-    bamit::parse_file(input, records);
+    bamit::sam_file_input_type input_file{input};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
-    bamit::construct_tree(root, records);
+    node_list = bamit::index(input_file);
     seqan3::debug_stream << "Writing to file.\n";
     {
         std::filesystem::path index_path{input};
@@ -131,7 +131,7 @@ int run_index(std::unique_ptr<bamit::IntervalNode> & root, std::filesystem::path
         std::ofstream out_file(index_path,
                                std::ios_base::binary | std::ios_base::out);
         cereal::BinaryOutputArchive archive(out_file);
-        bamit::write(root, archive);
+        bamit::write(node_list, archive);
         out_file.close();
     }
     return 0;
@@ -153,8 +153,8 @@ int parse_index(seqan3::argument_parser & parser)
         seqan3::debug_stream << "[Error] " << ext.what() << '\n';       // customise your error message
         return -1;
     }
-    std::unique_ptr<bamit::IntervalNode> root{nullptr};
-    run_index(root, options.input_path);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
+    run_index(node_list, options.input_path);
 
     return 0;
 }
@@ -178,20 +178,19 @@ int parse_overlap(seqan3::argument_parser & parser)
 
     bamit::sam_file_input_type input{options.input_path};
     std::filesystem::path index_path{options.input_path};
-    std::unique_ptr<bamit::IntervalNode> root(nullptr);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list;
     index_path.replace_extension("bam.bit");
     if (!std::filesystem::exists(index_path))
     {
-        run_index(root, options.input_path);
+        run_index(node_list, options.input_path);
     }
     else
     {
         seqan3::debug_stream << "Reading index file...\n";
-        root = std::make_unique<bamit::IntervalNode>();
         {
             std::ifstream in_file{index_path, std::ios_base::binary | std::ios_base::in};
             cereal::BinaryInputArchive iarchive(in_file);
-            bamit::read(root, iarchive);
+            bamit::read(node_list, iarchive);
             in_file.close();
         }
     }
@@ -202,7 +201,7 @@ int parse_overlap(seqan3::argument_parser & parser)
         return -1;
     }
     seqan3::debug_stream << "Search: " << start << " " << end << "\n";
-    bamit::get_overlap_records(input, root, start, end, options.out_file);
+    bamit::get_overlap_records(input, node_list, start, end, options.out_file);
 
     return 0;
 }
