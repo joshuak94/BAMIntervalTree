@@ -306,18 +306,46 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
 }
 
 /*!
+   \brief Move the file offset along until it points to the correct read.
+   \param input The alignment file to use.
+   \param start The start of the given query.
+   \param offset_pos The offset to move along.
+ */
+void get_correct_offset(sam_file_input_type & input,
+                        Position const & start,
+                        std::streamoff & offset_pos)
+{
+    input.seek(offset_pos);
+    for (auto & r : input | properly_mapped)
+    {
+        // If the read ends either at or after the start, it is the first read and its offset should be returned.
+        if (std::make_tuple(r.reference_id(), r.reference_position().value() + get_length(r.cigar_sequence())) >= start)
+        {
+            offset_pos = r.file_offset();
+            return;
+        }
+    }
+    // Don't think this is possible for the for loop to exit completely, but just in case...
+    seqan3::debug_stream << "[ERROR] Improper file offset/input file given.\n";
+    offset_pos = -1;
+}
+
+/*!
    \brief Find the records which overlap a given start and end position.
    \param input The sam file input of type bamit::sam_file_input_type.
    \param node_list The list of interval trees.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param outname The output filename.
+   \param outname The output filename. If not provided the function will only return the file offset and
+                  not write to any file.
+
+   \return Returns the file offset of the first read in the interval, or -1 if no reads are found.
 */
-void get_overlap_records(sam_file_input_type & input,
-                         std::vector<std::unique_ptr<IntervalNode>> const & node_list,
-                         Position const & start,
-                         Position const & end,
-                         std::filesystem::path const & outname)
+std::streamoff get_overlap_records(sam_file_input_type & input,
+                                   std::vector<std::unique_ptr<IntervalNode>> const & node_list,
+                                   Position const & start,
+                                   Position const & end,
+                                   std::filesystem::path const & outname = "")
 {
     std::streamoff offset_pos{-1};
 
@@ -349,25 +377,25 @@ void get_overlap_records(sam_file_input_type & input,
     if (offset_pos == -1)
     {
         seqan3::debug_stream << "No overlapping reads found.\n";
-        return;
+        return offset_pos;
     }
 
-    seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
-    input.seek(offset_pos);
+    get_correct_offset(input, start, offset_pos);
 
-    for (auto & r : input | properly_mapped)
+    if (!outname.empty())
     {
-        if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
+        seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+        input.seek(offset_pos);
+        for (auto & r : input | properly_mapped)
         {
-            break;
+            if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
+            {
+                break;
+            }
+            fout.push_back(r);
         }
-        if (std::make_tuple(r.reference_id(), r.reference_position().value() + get_length(r.cigar_sequence())) < start)
-        {
-            continue;
-        }
-
-        fout.push_back(r);
-   }
+    }
+    return offset_pos;
 }
 
 template <class Archive>

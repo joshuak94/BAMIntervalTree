@@ -98,7 +98,7 @@ TEST(benchmark, construct_and_search)
                                 std::to_string(std::get<1>(end)) + "]"};
         RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end, result_sam_path),
             query + " writing");
-        RUN(bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result),
+        RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end),
             query + " offest");
         std::filesystem::remove(result_sam_path);
     }

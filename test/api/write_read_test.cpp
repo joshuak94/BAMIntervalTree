@@ -22,7 +22,7 @@ TEST(write_read_test, write_read_test)
         cereal::BinaryOutputArchive ar(out);
 
         node_list = bamit::index(sam_in);
-        bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result);
+        result = bamit::get_overlap_records(sam_in, node_list, start, end);
 
         // Write tree to output.
         bamit::write(node_list, ar);
@@ -36,7 +36,7 @@ TEST(write_read_test, write_read_test)
 
         // Read tree from input.
         bamit::read(node_list, ar);
-        bamit::get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), result_after_reading);
+        result_after_reading = bamit::get_overlap_records(sam_in, node_list, start, end);
         in.close();
     }
 
