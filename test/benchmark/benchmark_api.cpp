@@ -87,7 +87,7 @@ TEST(benchmark, construct_and_search)
 
     // Generate 100 overlaps.
     bamit::Position start, end;
-    std::streamoff result{-1};
+    std::streampos result{-1};
     bamit::sam_file_input_type input_bam_2{large_file};
     for (int i = 0; i < 100; i++)
     {

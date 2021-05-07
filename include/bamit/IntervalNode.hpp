@@ -19,7 +19,7 @@ class IntervalNode
 {
 private:
     uint32_t start{}, end{};
-    std::streamoff file_offset{-1};
+    std::streampos file_offset{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
@@ -72,9 +72,9 @@ public:
 
      /*!
         \brief Get the file offset to the first read stored by this node.
-        \return Returns a reference to a std::streamoff which can be used to seek to a file position.
+        \return Returns a reference to a std::streampos which can be used to seek to a file position.
      */
-     std::streamoff const & get_file_offset()
+     std::streampos const & get_file_offset()
      {
          return file_offset;
      }
@@ -83,7 +83,7 @@ public:
         \brief Set the file offset to the first read for the current node.
         \param new_file_offset The file offset based on the records stored by this node.
      */
-     void set_file_offset(std::streamoff new_file_offset)
+     void set_file_offset(std::streampos new_file_offset)
      {
          this->file_offset = std::move(new_file_offset);
      }
@@ -131,7 +131,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(this->start, this->end, this->lNode, this->rNode, this->file_offset);
+        ar(this->start, this->end, this->lNode, this->rNode, static_cast<std::streamoff>(this->file_offset));
     }
 
 };
@@ -268,7 +268,7 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
 void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
                              uint32_t const & start,
                              uint32_t const & end,
-                             std::streamoff & offset_pos)
+                             std::streampos & offset_pos)
 {
     if (!node)
     {
@@ -313,7 +313,7 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
  */
 void get_correct_offset(sam_file_input_type & input,
                         Position const & start,
-                        std::streamoff & offset_pos)
+                        std::streampos & offset_pos)
 {
     input.seek(offset_pos);
     for (auto & r : input | properly_mapped)
@@ -341,13 +341,13 @@ void get_correct_offset(sam_file_input_type & input,
 
    \return Returns the file offset of the first read in the interval, or -1 if no reads are found.
 */
-std::streamoff get_overlap_records(sam_file_input_type & input,
+std::streampos get_overlap_records(sam_file_input_type & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                    Position const & start,
                                    Position const & end,
                                    std::filesystem::path const & outname = "")
 {
-    std::streamoff offset_pos{-1};
+    std::streampos offset_pos{-1};
 
     // Look for the file offset using the tree for the starting chromosome.
     if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.

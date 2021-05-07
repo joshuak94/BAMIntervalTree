@@ -43,7 +43,7 @@ auto properly_mapped = std::views::filter([] (auto const & rec)
 struct Record
 {
     uint32_t start{}, end{};
-    std::streamoff file_offset{-1};
+    std::streampos file_offset{-1};
 
     /*!\name Constructors, destructor and assignment
      * \{
@@ -55,7 +55,7 @@ struct Record
     Record & operator=(Record &&)             = default; //!< Defaulted.
     ~Record()                                 = default; //!< Defaulted.
      //!\}
-    Record(uint32_t start_i, uint32_t end_i, std::streamoff file_offset_i) :
+    Record(uint32_t start_i, uint32_t end_i, std::streampos file_offset_i) :
         start{std::move(start_i)},
         end{std::move(end_i)},
         file_offset{std::move(file_offset_i)} {}
