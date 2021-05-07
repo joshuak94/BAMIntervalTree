@@ -230,8 +230,11 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
     }
 
-    // Vector containing result.
-    std::vector<std::unique_ptr<IntervalNode>> result{};
+    // Vector containing result, initialized to # of chromosomes in header.
+    std::vector<std::unique_ptr<IntervalNode>> result;
+    result.reserve(input_file.header().ref_ids().size());
+    std::generate_n(std::back_inserter(result), input_file.header().ref_ids().size(),
+                    [] { return std::make_unique<IntervalNode>(); });
 
     // List of records for a single chromosome.
     std::vector<Record> cur_records;
@@ -243,17 +246,13 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
         uint32_t position = r.reference_position().value();
         if (ref_id != cur_index)
         {
-            std::unique_ptr<IntervalNode> root{nullptr};
-            construct_tree(root, cur_records);
+            construct_tree(result[cur_index], cur_records);
             cur_records.clear();
-            result.push_back(std::move(root));
             ++cur_index;
         }
         cur_records.emplace_back(position, position + get_length(r.cigar_sequence()), r.file_offset());
     }
-    std::unique_ptr<IntervalNode> root{nullptr};
-    construct_tree(root, cur_records);
-    result.push_back(std::move(root));
+    construct_tree(result[cur_index], cur_records);
 
     return result;
 }
