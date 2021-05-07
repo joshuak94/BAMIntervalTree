@@ -104,7 +104,8 @@ TEST(benchmark, construct_and_search)
     std::streampos result{-1};
     for (int i = 0; i < 100; i++)
     {
-        bamit::sam_file_input_type input_bam_2{large_file};
+        bamit::sam_file_input_type input_bam_write{large_file};
+        bamit::sam_file_input_type input_bam_offset{large_file};
         get_random_position(start, end, input_bam.header());
         std::string query{"[" + std::to_string(std::get<0>(start)) + ", " +
                                 std::to_string(std::get<1>(start)) + "] - [" +
@@ -147,12 +148,12 @@ TEST(benchmark, construct_and_search)
 
         seqan3::debug_stream << i << ": " << query;
         _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
-        bamit::get_overlap_records(input_bam_2, node_list, start, end, result_sam_path);
+        bamit::get_overlap_records(input_bam_write, node_list, start, end, result_sam_path);
         _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
         avg_bit_overlap += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
 
         _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
-        bamit::get_overlap_records(input_bam_2, node_list, start, end);
+        bamit::get_overlap_records(input_bam_offset, node_list, start, end);
         _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
         avg_bit_offset += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
 
