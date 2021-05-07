@@ -384,7 +384,11 @@ std::streampos get_overlap_records(sam_file_input_type & input,
 
     if (!outname.empty())
     {
-        seqan3::sam_file_output fout{outname, bamit::sam_file_output_fields{}};
+        // Need to extract chromosome lengths for the output header file.
+        std::vector<int32_t> ref_lengths{};
+        std::transform(std::begin(input.header().ref_id_info), std::end(input.header().ref_id_info),
+                       std::back_inserter(ref_lengths), [](auto const & pair){ return std::get<0>(pair); });
+        seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths, bamit::sam_file_output_fields{}};
         input.seek(offset_pos);
         for (auto & r : input | properly_mapped)
         {
