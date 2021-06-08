@@ -5,6 +5,9 @@
 #include <random>
 #include <chrono>
 #include <ctime>
+#include <cstring>
+
+#include "test_htslib.hpp"
 
 #define RUN(x, y) {startTimeMessage(y);x;endTimeMessage(y);}
 
@@ -72,8 +75,8 @@ void get_random_position(bamit::Position & start, bamit::Position & end,
 
 TEST(benchmark, construct_and_search)
 {
+    using std::chrono::operator""us;
     std::filesystem::path tmp_dir = std::filesystem::temp_directory_path();     // get the temp directory
-    std::filesystem::path result_sam_path{tmp_dir/"result.sam"};
     std::filesystem::path large_file{DATADIR"large_file.bam"};
     if (!std::filesystem::exists(large_file))
     {
@@ -85,21 +88,99 @@ TEST(benchmark, construct_and_search)
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
     RUN((node_list = bamit::index(input_bam)), "Construction");
 
+    // Index via HTSlib
+    RUN(htslib_index(large_file.c_str()), "HTSlib indexing");
+    hts_idx_t * index;
+    htsFile * in = hts_open(large_file.c_str(), "r");
+    index = sam_index_load(in, large_file.c_str());
+
+    // Load header via HTSlib
+    sam_hdr_t * header = sam_hdr_read(in);
+
+    // Collect average times.
+    auto avg_bit_offset{0us}, avg_bit_overlap{0us}, avg_hts_offset{0us}, avg_hts_overlap{0us};
     // Generate 100 overlaps.
     bamit::Position start, end;
     std::streampos result{-1};
-    bamit::sam_file_input_type input_bam_2{large_file};
     for (int i = 0; i < 100; i++)
     {
+        bamit::sam_file_input_type input_bam_write{large_file};
+        bamit::sam_file_input_type input_bam_offset{large_file};
         get_random_position(start, end, input_bam.header());
         std::string query{"[" + std::to_string(std::get<0>(start)) + ", " +
                                 std::to_string(std::get<1>(start)) + "] - [" +
                                 std::to_string(std::get<0>(end)) + ", " +
-                                std::to_string(std::get<1>(end)) + "]"};
-        RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end, result_sam_path),
-            query + " writing");
-        RUN(bamit::get_overlap_records(input_bam_2, node_list, start, end),
-            query + " offest");
+                                std::to_string(std::get<1>(end)) + "]\n"};
+        std::filesystem::path result_sam_path = tmp_dir/(std::to_string(i) + "_bit.bam");
+        std::filesystem::path result_htslib_path = tmp_dir/(std::to_string(i) + "_hts.bam");
+        htsFile * out = hts_open(result_htslib_path.c_str(), "w");
+
+        // Convert start and end to a string of regions for htslib.
+        std::vector<std::string> region_list{};
+        // char ** region = (char**) malloc( (1 + std::get<0>(end) - std::get<0>(start)) * sizeof(char*) );
+        std::string start_str, end_str;
+        start_str = input_bam.header().ref_ids()[std::get<0>(start)] + ":" +
+                    std::to_string(std::get<1>(start));
+        region_list.push_back(start_str);
+        if (std::get<0>(start) != std::get<0>(end))
+        {
+            for (size_t j = (std::get<0>(start) + 1); j < std::get<0>(end); j++)
+            {
+                region_list.push_back(input_bam.header().ref_ids()[j]);
+            }
+            region_list.push_back(input_bam.header().ref_ids()[std::get<0>(end)] + ":" +
+                                  "1-" + std::to_string(std::get<1>(end)));
+        }
+        else
+        {
+            start_str += "-";
+            start_str += std::to_string(std::get<1>(end));
+        }
+        region_list[0] = start_str;
+
+        // Copy the region_list from string to region char** array.
+        std::vector<char*> region;
+        for (const auto & r : region_list)
+        {
+            region.push_back(strdup(r.data()));
+        }
+        region.push_back(nullptr);
+
+        seqan3::debug_stream << i << ": " << query;
+        _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        bamit::get_overlap_records(input_bam_write, node_list, start, end, result_sam_path);
+        _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        avg_bit_overlap += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
+
+        _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        bamit::get_overlap_records(input_bam_offset, node_list, start, end);
+        _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        avg_bit_offset += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
+
+        _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        htslib_overlap_records(index, header, region.data(), (std::get<0>(end) - std::get<0>(start)) + 1, in, out);
+        _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        avg_hts_overlap += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
+
+        _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        htslib_overlap_file_offset(index, header, region.data(), (std::get<0>(end) - std::get<0>(start)) + 1);
+        _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        avg_hts_offset += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
+        hts_close(out);
+
         std::filesystem::remove(result_sam_path);
+        std::filesystem::remove(result_htslib_path);
     }
+
+    seqan3::debug_stream << "Average for get_overlap_records: " <<
+                            std::to_string((avg_bit_overlap.count())/100) << "\n";
+    seqan3::debug_stream << "Average for get_overlap_file_offset: " <<
+                            std::to_string((avg_bit_offset.count())/100) << "\n";
+    seqan3::debug_stream << "Average for htslib_overlap_records: " <<
+                            std::to_string((avg_hts_overlap.count())/100) << "\n";
+    seqan3::debug_stream << "Average for htslib_overlap_file_offset: " <<
+                            std::to_string((avg_hts_offset.count())/100) << "\n";
+    sam_hdr_destroy(header);
+    hts_idx_destroy(index);
+    hts_close(in);
 }

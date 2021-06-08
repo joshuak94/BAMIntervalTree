@@ -238,7 +238,7 @@ jobs:
           fi
 
       - name: Run tests
-        if: matrix.build != 'coverage' && matrix.build != 'benchmark' # Already ran by the make call
+        if: matrix.build != 'coverage' # Already ran by the make call
         run: |
           cd app-build
           if [[ "${{ matrix.build }}" =~ ^(documentation)$ ]]; then
