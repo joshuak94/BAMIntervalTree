@@ -222,6 +222,7 @@ jobs:
           cmake ../app -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}"
 
       - name: Build tests
+        if: matrix.build != 'benchmark'
         env:
           CCACHE_BASEDIR: ${{ github.workspace }}
           CCACHE_DIR: ${{ github.workspace }}/.ccache
