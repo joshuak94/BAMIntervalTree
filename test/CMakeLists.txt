@@ -58,6 +58,8 @@ macro (add_app_test test_filename test_alternative)
     elseif (${test_alternative} STREQUAL "API_TEST")
         add_dependencies (api_test ${target})
     elseif (${test_alternative} STREQUAL "BENCHMARK_TEST")
+        # Add hts and lzma if building benchmark.
+        target_link_libraries (${target} "${PROJECT_NAME}_lib" libhts.a lzma)
         add_dependencies (benchmark_test ${target})
     endif ()
 
