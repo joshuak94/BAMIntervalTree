@@ -52,3 +52,10 @@ void main()
     bamit::get_overlap_records(input, root, start, end, output);
 }
 ```
+
+Benchmarking was performed against HTSlib and can be run as such:
+Note that the benchmarking can only be run if the HTSlib and lzma libraries are installed locally.
+```sh
+cd BAMIntervalTree_build/test/benchmark
+make benchmark_api
+```

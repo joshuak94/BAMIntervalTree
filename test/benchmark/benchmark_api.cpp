@@ -80,6 +80,7 @@ TEST(benchmark, construct_and_search)
     std::filesystem::path large_file{DATADIR"large_file.bam"};
     if (!std::filesystem::exists(large_file))
     {
+        seqan3::debug_stream << "[ERROR] There should be a file named large_file.bam in the data directory.\n";
         return;
     }
     bamit::sam_file_input_type input_bam{large_file};
