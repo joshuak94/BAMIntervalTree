@@ -58,7 +58,7 @@ void get_random_position(bamit::Position & start, bamit::Position & end,
     std::mt19937 gen(rd()); // seed the generator
     std::uniform_int_distribution<> distr_start(0, header.ref_ids().size() - 1); // define the range
     uint32_t rand_chr_start = distr_start(gen); // Get start random chromosome.
-    std::uniform_int_distribution<> distr_end(rand_chr_start, header.ref_ids().size() - 1); // define the range
+    std::uniform_int_distribution<> distr_end(rand_chr_start, std::min((rand_chr_start+1), static_cast<uint32_t>(header.ref_ids().size() - 1))); // define the range
     uint32_t rand_chr_end = distr_end(gen); // Get end random chromosome, guaranteed to be >= start.
 
     std::uniform_int_distribution<> distr_pos_start(0, std::get<0>(header.ref_id_info[rand_chr_start]) - 1);

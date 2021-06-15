@@ -219,10 +219,11 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
 /*!
    \brief Entry point into the recursive tree construction.
    \param input_file The input file to construct the tree over.
+   \param verbose Print verbose output.
    \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
            chromosome.
 */
-std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file)
+std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file, bool const & verbose)
 {
     // First make sure alingment file is sorted by coordinate.
     if (input_file.header().sorting != "coordinate")
@@ -246,13 +247,19 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
         uint32_t position = r.reference_position().value();
         if (ref_id != cur_index)
         {
+            if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
+                                              << input_file.header().ref_ids()[cur_index] << "...";
             construct_tree(result[cur_index], cur_records);
+            if (verbose) seqan3::debug_stream << " Done!\n";
             cur_records.clear();
             ++cur_index;
         }
         cur_records.emplace_back(position, position + get_length(r.cigar_sequence()), r.file_offset());
     }
+    if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
+                                      << input_file.header().ref_ids()[cur_index] << "...";
     construct_tree(result[cur_index], cur_records);
+    if (verbose) seqan3::debug_stream << " Done!\n";
 
     return result;
 }
@@ -336,6 +343,7 @@ void get_correct_offset(sam_file_input_type & input,
    \param node_list The list of interval trees.
    \param start The start position of the search.
    \param end The end position of the search.
+   \param verbose Print verbose output.
    \param outname The output filename. If not provided the function will only return the file offset and
                   not write to any file.
 
@@ -345,6 +353,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                    Position const & start,
                                    Position const & end,
+                                   bool const & verbose,
                                    std::filesystem::path const & outname = "")
 {
     std::streampos offset_pos{-1};
@@ -376,7 +385,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
 
     if (offset_pos == -1)
     {
-        seqan3::debug_stream << "No overlapping reads found.\n";
+        if (verbose) seqan3::debug_stream << "No overlapping reads found.\n";
         return offset_pos;
     }
 

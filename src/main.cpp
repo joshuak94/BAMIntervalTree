@@ -9,11 +9,11 @@
 struct IndexOptions
 {
     std::filesystem::path input_path{};
+    bool verbose{false};
 };
 
-struct OverlapOptions
+struct OverlapOptions : IndexOptions
 {
-    std::filesystem::path input_path{};
     std::filesystem::path out_file{};
     std::string start{};
     std::string end{};
@@ -38,6 +38,7 @@ void initialize_index_parser(seqan3::argument_parser & parser, IndexOptions & op
     parser.add_option(options.input_path, 'i', "input_bam",
                       "Input a sorted BAM/SAM file to construct an index over.", seqan3::option_spec::required,
                       seqan3::input_file_validator{{"sam", "bam"}});
+    parser.add_flag(options.verbose, 'v', "verbose", "Print verbose output.");
 }
 
 void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions & options)
@@ -62,6 +63,7 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
                       " Note that when start and end are the same, this queries for reads overlapping a point.",
                       seqan3::option_spec::required,
                       query_validator);
+    parser.add_flag(options.verbose, 'v', "verbose", "Print verbose output.");
 }
 
 /*!
@@ -117,16 +119,16 @@ int const parse_overlap_query(bamit::Position & start,
     return 0;
 }
 
-int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, std::filesystem::path const & input)
+int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, IndexOptions const & options)
 {
     std::vector<std::vector<bamit::Record>> records{};
-    bamit::sam_file_input_type input_file{input};
+    bamit::sam_file_input_type input_file{options.input_path};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
-    node_list = bamit::index(input_file);
+    node_list = bamit::index(input_file, options.verbose);
     seqan3::debug_stream << "Writing to file.\n";
     {
-        std::filesystem::path index_path{input};
+        std::filesystem::path index_path{options.input_path};
         index_path.replace_extension("bam.bit");
         std::ofstream out_file(index_path,
                                std::ios_base::binary | std::ios_base::out);
@@ -154,7 +156,7 @@ int parse_index(seqan3::argument_parser & parser)
         return -1;
     }
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
-    run_index(node_list, options.input_path);
+    run_index(node_list, options);
 
     return 0;
 }
@@ -182,7 +184,7 @@ int parse_overlap(seqan3::argument_parser & parser)
     index_path.replace_extension("bam.bit");
     if (!std::filesystem::exists(index_path))
     {
-        run_index(node_list, options.input_path);
+        run_index(node_list, options);
     }
     else
     {
@@ -200,8 +202,8 @@ int parse_overlap(seqan3::argument_parser & parser)
     {
         return -1;
     }
-    seqan3::debug_stream << "Search: " << start << " " << end << "\n";
-    bamit::get_overlap_records(input, node_list, start, end, options.out_file);
+    if (options.verbose) seqan3::debug_stream << "Search: " << start << " " << end << "\n";
+    bamit::get_overlap_records(input, node_list, start, end, options.verbose, options.out_file);
 
     return 0;
 }
