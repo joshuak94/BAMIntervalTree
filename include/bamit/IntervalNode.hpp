@@ -223,7 +223,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
    \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
            chromosome.
 */
-std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file, bool const & verbose)
+std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file, bool const & verbose = false)
 {
     // First make sure alingment file is sorted by coordinate.
     if (input_file.header().sorting != "coordinate")
@@ -353,7 +353,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                    Position const & start,
                                    Position const & end,
-                                   bool const & verbose,
+                                   bool const & verbose = false,
                                    std::filesystem::path const & outname = "")
 {
     std::streampos offset_pos{-1};

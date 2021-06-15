@@ -148,7 +148,7 @@ TEST(benchmark, construct_and_search)
 
         seqan3::debug_stream << i << ": " << query;
         _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
-        bamit::get_overlap_records(input_bam_write, node_list, start, end, result_sam_path);
+        bamit::get_overlap_records(input_bam_write, node_list, start, end, false, result_sam_path);
         _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
         avg_bit_overlap += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
 
