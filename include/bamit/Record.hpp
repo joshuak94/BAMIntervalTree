@@ -11,7 +11,6 @@ using sam_file_input_fields = seqan3::fields<seqan3::field::id,
                                              seqan3::field::offset,
                                              seqan3::field::ref_id,
                                              seqan3::field::ref_offset,
-                                             seqan3::field::file_offset,
                                              seqan3::field::cigar,
                                              seqan3::field::mapq,
                                              seqan3::field::qual,
@@ -34,10 +33,12 @@ using sam_file_output_fields = seqan3::fields<seqan3::field::id,
 
 using Position = std::tuple<int32_t, int32_t>;
 
-auto properly_mapped = std::views::filter([] (auto const & rec)
+inline bool unmapped(auto const & rec)
 {
-    return (rec.reference_id().value_or(-1) != -1) && (rec.reference_position().value_or(-1) != -1);
-});
+    return (rec.reference_id().value_or(-1) == -1) ||
+           (rec.reference_position().value_or(-1) == -1) ||
+           (static_cast<bool>(rec.flag() & seqan3::sam_flag::unmapped));
+};
 
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
@@ -128,41 +129,5 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
         }
     }
     return result;
-}
-
-/*!
-   \brief Parse an alignment file and store the records and the cumulative sum across the genome.
-   \param input_path The path to the alignment file.
-   \param record_list An empty vector which will store all of the records.
-*/
-void parse_file(std::filesystem::path const & input_path,
-                std::vector<std::vector<Record>> & record_list)
-{
-    sam_file_input_type input{input_path};
-
-    // First make sure alingment file is sorted by coordinate.
-    if (input.header().sorting != "coordinate")
-    {
-        throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
-    }
-
-    // cur_index, ref_id, and position can never be a negative value because of the properly_mapped filter.
-    std::vector<Record> cur_records{};
-    uint32_t cur_index{0};
-    for (auto const & r : input | properly_mapped)
-    {
-        uint32_t ref_id = r.reference_id().value();
-        uint32_t position = r.reference_position().value();
-        if (ref_id != cur_index)
-        {
-            record_list.push_back(cur_records);
-            cur_records.clear();
-            ++cur_index;
-        }
-        cur_records.emplace_back(r.reference_position().value(),
-                                 r.reference_position().value() + get_length(r.cigar_sequence()),
-                                 r.file_offset());
-    }
-    record_list.push_back(cur_records);
 }
 }

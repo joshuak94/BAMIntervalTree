@@ -241,10 +241,11 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
     std::vector<Record> cur_records;
 
     uint32_t cur_index{0};
-    for (auto const & r : input_file | properly_mapped)
+    for (auto it = input_file.begin(); it != input_file.end(); ++it)
     {
-        uint32_t ref_id = r.reference_id().value();
-        uint32_t position = r.reference_position().value();
+        if (unmapped(*it)) continue;
+        uint32_t ref_id = (*it).reference_id().value();
+        uint32_t position = (*it).reference_position().value();
         if (ref_id != cur_index)
         {
             if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
@@ -254,7 +255,7 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
             cur_records.clear();
             ++cur_index;
         }
-        cur_records.emplace_back(position, position + get_length(r.cigar_sequence()), r.file_offset());
+        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), it.file_position());
     }
     if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
                                       << input_file.header().ref_ids()[cur_index] << "...";
@@ -322,13 +323,16 @@ void get_correct_offset(sam_file_input_type & input,
                         Position const & start,
                         std::streampos & offset_pos)
 {
-    input.seek(offset_pos);
-    for (auto & r : input | properly_mapped)
+    auto it = input.begin();
+    it.seek_to(offset_pos);
+    for (; it != input.end(); ++it)
     {
+        if (unmapped(*it)) continue;
         // If the read ends either at or after the start, it is the first read and its offset should be returned.
-        if (std::make_tuple(r.reference_id(), r.reference_position().value() + get_length(r.cigar_sequence())) >= start)
+        if (std::make_tuple((*it).reference_id().value(),
+                            (*it).reference_position().value() + get_length((*it).cigar_sequence())) >= start)
         {
-            offset_pos = r.file_offset();
+            offset_pos = it.file_position();
             return;
         }
     }
@@ -398,14 +402,16 @@ std::streampos get_overlap_records(sam_file_input_type & input,
         std::transform(std::begin(input.header().ref_id_info), std::end(input.header().ref_id_info),
                        std::back_inserter(ref_lengths), [](auto const & pair){ return std::get<0>(pair); });
         seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths, bamit::sam_file_output_fields{}};
-        input.seek(offset_pos);
-        for (auto & r : input | properly_mapped)
+        auto it = input.begin();
+        it.seek_to(offset_pos);
+        for (; it != input.end(); ++it)
         {
-            if (std::make_tuple(r.reference_id(), r.reference_position()) > end)
+            if (unmapped(*it)) continue;
+            if (std::make_tuple((*it).reference_id().value(), (*it).reference_position().value()) > end)
             {
                 break;
             }
-            fout.push_back(r);
+            fout.push_back(*it);
         }
     }
     return offset_pos;

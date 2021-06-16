@@ -52,7 +52,7 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
                       seqan3::input_file_validator{{"sam", "bam"}});
     parser.add_option(options.out_file, 'o', "output_sam",
                       "The SAM file, where the results should be stored.", seqan3::option_spec::standard,
-                      seqan3::output_file_validator{{"sam", "bam"}});
+                      seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"sam", "bam"}});
     parser.add_option(options.start, 's', "start",
                       "The start of the interval to query, in the format chrA,posA."
                       " Note that when start and end are the same, this queries for reads overlapping a point.",
