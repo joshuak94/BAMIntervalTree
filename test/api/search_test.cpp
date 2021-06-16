@@ -23,7 +23,7 @@ TEST(get_overlap_records, simulated_chr1_small_golden)
     // Temporary fix: use new object.
     // Permanent fix: seqan3 is changing how you get/use the file position.
     bamit::sam_file_input_type input_file_2{input};
-    get_overlap_records(input_file_2, node_list, start, end, result_sam_path);
+    get_overlap_records(input_file_2, node_list, start, end, false, result_sam_path);
     seqan3::sam_file_input expected{DATADIR"samtools_result.sam",  bamit::sam_file_output_fields{}};
     seqan3::sam_file_input result{result_sam_path,  bamit::sam_file_output_fields{}};
 
