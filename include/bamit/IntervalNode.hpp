@@ -10,7 +10,7 @@
 
 namespace bamit
 {
-/*! The IntervalNode class stores a single node which is a part of an interval tree. It stores a file offset to the
+/*! The IntervalNode class stores a single node which is a part of an interval tree. It stores a file position to the
  *  first read which intersects the median, along with pointers to its left and right children.
  *  Additionally, it stores the chromosome it is in, the start of the left-most record and the end of the right-most
  *  record.
@@ -19,7 +19,7 @@ class IntervalNode
 {
 private:
     uint32_t start{}, end{};
-    std::streampos file_offset{-1};
+    std::streampos file_position{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
@@ -56,7 +56,7 @@ public:
         \brief Get the start for the current node.
         \return Returns the start position of the left-most record which is stored in this node.
      */
-     uint32_t const & get_start()
+     uint32_t const & get_start() const
      {
          return start;
      }
@@ -65,27 +65,27 @@ public:
         \brief Get the end for the current node.
         \return Returns the end position of the right-most record which is stored in this node.
      */
-     uint32_t const & get_end()
+     uint32_t const & get_end() const
      {
          return end;
      }
 
      /*!
-        \brief Get the file offset to the first read stored by this node.
+        \brief Get the file position to the first read stored by this node.
         \return Returns a reference to a std::streampos which can be used to seek to a file position.
      */
-     std::streampos const & get_file_offset()
+     std::streampos const & get_file_position() const
      {
-         return file_offset;
+         return file_position;
      }
 
      /*!
-        \brief Set the file offset to the first read for the current node.
-        \param new_file_offset The file offset based on the records stored by this node.
+        \brief Set the file position to the first read for the current node.
+        \param new_file_position The file position based on the records stored by this node.
      */
-     void set_file_offset(std::streampos new_file_offset)
+     void set_file_position(std::streampos new_file_position)
      {
-         this->file_offset = std::move(new_file_offset);
+         this->file_position = std::move(new_file_position);
      }
 
      /*!
@@ -94,7 +94,7 @@ public:
      */
      void set_start(uint32_t s)
      {
-         this->start = s;
+         this->start = std::move(s);
      }
 
      /*!
@@ -103,7 +103,7 @@ public:
      */
      void set_end(uint32_t e)
      {
-         this->end = e;
+         this->end = std::move(e);
      }
 
      /*!
@@ -115,7 +115,7 @@ public:
          std::string indent(level, '\t');
          seqan3::debug_stream << indent << "Level: " << level << '\n' <<
                                  indent << "Start, end: " << start << ", " << end << '\n' <<
-                                 indent << "File offset: " << this->get_file_offset() << '\n';
+                                 indent << "File position: " << this->get_file_position() << '\n';
          if (lNode)
          {
              seqan3::debug_stream << indent << "left node... \n";
@@ -131,7 +131,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(this->start, this->end, this->lNode, this->rNode, static_cast<std::streamoff>(this->file_offset));
+        ar(this->start, this->end, this->lNode, this->rNode, static_cast<std::streamoff>(this->file_position));
     }
 
 };
@@ -148,10 +148,10 @@ uint32_t calculate_median(std::vector<Record> const & records_i)
 {
     std::vector<uint32_t> values{};
     values.reserve(records_i.size() * 2);
-    for (auto it = records_i.cbegin(); it != records_i.cend(); ++it)
+    for (auto const & r : records_i)
     {
-        values.push_back((*it).start);
-        values.push_back((*it).end);
+        values.push_back(r.start);
+        values.push_back(r.end);
     }
     std::sort(values.begin(), values.end());
 
@@ -195,13 +195,13 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
         {
             rRecords.push_back(std::move(r));
         }
-        // Read intersects the median. Only store file offset and start from the left-most read!
+        // Read intersects the median. Only store file position and start from the left-most read!
         // End is always updated while the read intersects the median.
         else
         {
-            if (node->get_file_offset() == -1)
+            if (node->get_file_position() == -1)
             {
-                node->set_file_offset(r.file_offset);
+                node->set_file_position(r.file_position);
                 start = r.start;
             }
             end = r.end;
@@ -271,12 +271,12 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
    \param node The current node to search.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param offset_pos The resulting offset position.
+   \param file_position The resulting position position.
 */
-void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
+void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
                              uint32_t const & start,
                              uint32_t const & end,
-                             std::streampos & offset_pos)
+                             std::streampos & file_position)
 {
     if (!node)
     {
@@ -294,51 +294,51 @@ void get_overlap_file_offset(std::unique_ptr<IntervalNode> const & node,
      * 5. The query interval is partially to the right of the current end (start <= cur_end && end > cur_end).
      * 6. The query interval is wholly to the right of the current end (start > cur_end).
      *
-     * In case 1, do not store the file offset and search the left subtree.
-     * In cases 2 through 5, store the file offset and search the left subtree.
-     * In case 6, do not store the file offset and search the right subtree.
+     * In case 1, do not store the file position and search the left subtree.
+     * In cases 2 through 5, store the file position and search the left subtree.
+     * In case 6, do not store the file position and search the right subtree.
     */
     if (end < cur_start)
     {
-        get_overlap_file_offset(node->get_left_node(), start, end, offset_pos);
+        get_overlap_file_position(node->get_left_node(), start, end, file_position);
     }
     else if (start > cur_end)
     {
-        get_overlap_file_offset(node->get_right_node(), start, end, offset_pos);
+        get_overlap_file_position(node->get_right_node(), start, end, file_position);
     }
     else
     {
-        offset_pos = node->get_file_offset();
-        get_overlap_file_offset(node->get_left_node(), start, end, offset_pos);
+        file_position = node->get_file_position();
+        get_overlap_file_position(node->get_left_node(), start, end, file_position);
     }
 }
 
 /*!
-   \brief Move the file offset along until it points to the correct read.
+   \brief Move the file position along until it points to the correct read.
    \param input The alignment file to use.
    \param start The start of the given query.
-   \param offset_pos The offset to move along.
+   \param file_position The position to move along.
  */
-void get_correct_offset(sam_file_input_type & input,
+void get_correct_position(sam_file_input_type & input,
                         Position const & start,
-                        std::streampos & offset_pos)
+                        std::streampos & file_position)
 {
     auto it = input.begin();
-    it.seek_to(offset_pos);
+    it.seek_to(file_position);
     for (; it != input.end(); ++it)
     {
         if (unmapped(*it)) continue;
-        // If the read ends either at or after the start, it is the first read and its offset should be returned.
+        // If the read ends either at or after the start, it is the first read and its position should be returned.
         if (std::make_tuple((*it).reference_id().value(),
                             (*it).reference_position().value() + get_length((*it).cigar_sequence())) >= start)
         {
-            offset_pos = it.file_position();
+            file_position = it.file_position();
             return;
         }
     }
     // Don't think this is possible for the for loop to exit completely, but just in case...
-    seqan3::debug_stream << "[ERROR] Improper file offset/input file given.\n";
-    offset_pos = -1;
+    seqan3::debug_stream << "[ERROR] Improper file position/input file given.\n";
+    file_position = -1;
 }
 
 /*!
@@ -348,10 +348,10 @@ void get_correct_offset(sam_file_input_type & input,
    \param start The start position of the search.
    \param end The end position of the search.
    \param verbose Print verbose output.
-   \param outname The output filename. If not provided the function will only return the file offset and
+   \param outname The output filename. If not provided the function will only return the file position and
                   not write to any file.
 
-   \return Returns the file offset of the first read in the interval, or -1 if no reads are found.
+   \return Returns the file position of the first read in the interval, or -1 if no reads are found.
 */
 std::streampos get_overlap_records(sam_file_input_type & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
@@ -360,12 +360,12 @@ std::streampos get_overlap_records(sam_file_input_type & input,
                                    bool const & verbose = false,
                                    std::filesystem::path const & outname = "")
 {
-    std::streampos offset_pos{-1};
+    std::streampos file_position{-1};
 
-    // Look for the file offset using the tree for the starting chromosome.
+    // Look for the file position using the tree for the starting chromosome.
     if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
     {
-        get_overlap_file_offset(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), offset_pos);
+        get_overlap_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
     }
     else // Searching across multiple chromosomes.
     {
@@ -378,22 +378,22 @@ std::streampos get_overlap_records(sam_file_input_type & input,
             uint32_t start_position = std::get<0>(start) == i ? std::get<1>(start) : 0;
             // End at given end if at the last chromosome, otherwise end at end of chromosome.
             uint32_t end_position = std::get<0>(end) == i ? std::get<1>(end) : std::numeric_limits<uint32_t>::max();
-            get_overlap_file_offset(node_list[i], start_position, end_position, offset_pos);
+            get_overlap_file_position(node_list[i], start_position, end_position, file_position);
 
-            // If we find the left-most offset we can stop. Otherwise we have to check the next tree if
+            // If we find the left-most position we can stop. Otherwise we have to check the next tree if
             // the overlap spans more than one chromosome.
-            if (offset_pos != -1)
+            if (file_position != -1)
                 break;
         }
     }
 
-    if (offset_pos == -1)
+    if (file_position == -1)
     {
         if (verbose) seqan3::debug_stream << "No overlapping reads found.\n";
-        return offset_pos;
+        return file_position;
     }
 
-    get_correct_offset(input, start, offset_pos);
+    get_correct_position(input, start, file_position);
 
     if (!outname.empty())
     {
@@ -403,7 +403,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
                        std::back_inserter(ref_lengths), [](auto const & pair){ return std::get<0>(pair); });
         seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths, bamit::sam_file_output_fields{}};
         auto it = input.begin();
-        it.seek_to(offset_pos);
+        it.seek_to(file_position);
         for (; it != input.end(); ++it)
         {
             if (unmapped(*it)) continue;
@@ -414,7 +414,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
             fout.push_back(*it);
         }
     }
-    return offset_pos;
+    return file_position;
 }
 
 template <class Archive>
