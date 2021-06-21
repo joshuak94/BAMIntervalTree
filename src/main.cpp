@@ -9,6 +9,7 @@
 struct IndexOptions
 {
     std::filesystem::path input_path{};
+    uint16_t threads{0};
     bool verbose{false};
 };
 
@@ -38,6 +39,10 @@ void initialize_index_parser(seqan3::argument_parser & parser, IndexOptions & op
     parser.add_option(options.input_path, 'i', "input_bam",
                       "Input a sorted BAM/SAM file to construct an index over.", seqan3::option_spec::required,
                       seqan3::input_file_validator{{"sam", "bam"}});
+    parser.add_option(options.threads, 't', "threads", "The number of threads to use for parallel work.",
+                      seqan3::option_spec::standard,
+                      seqan3::arithmetic_range_validator{std::numeric_limits<uint16_t>::min(),
+                                                         std::numeric_limits<uint16_t>::max()});
     parser.add_flag(options.verbose, 'v', "verbose", "Print verbose output.");
 }
 
@@ -63,6 +68,10 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
                       " Note that when start and end are the same, this queries for reads overlapping a point.",
                       seqan3::option_spec::required,
                       query_validator);
+    parser.add_option(options.threads, 't', "threads", "The number of threads to use for parallel work.",
+                      seqan3::option_spec::standard,
+                      seqan3::arithmetic_range_validator{std::numeric_limits<uint16_t>::min(),
+                                                         std::numeric_limits<uint16_t>::max()});
     parser.add_flag(options.verbose, 'v', "verbose", "Print verbose output.");
 }
 
@@ -122,6 +131,10 @@ int const parse_overlap_query(bamit::Position & start,
 int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, IndexOptions const & options)
 {
     std::vector<std::vector<bamit::Record>> records{};
+    if (options.threads != 0)
+    {
+        seqan3::contrib::bgzf_thread_count = options.threads;
+    }
     bamit::sam_file_input_type input_file{options.input_path};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
@@ -178,6 +191,11 @@ int parse_overlap(seqan3::argument_parser & parser)
       return -1;
     }
 
+    if (options.threads != 0)
+    {
+        seqan3::contrib::bgzf_thread_count = options.threads;
+    }
+    
     bamit::sam_file_input_type input{options.input_path};
     std::filesystem::path index_path{options.input_path};
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list;
