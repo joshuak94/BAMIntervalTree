@@ -13,7 +13,7 @@ TEST(write_read_test, write_read_test)
     bamit::Position start{1, 100};
     bamit::Position end{1, 150};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    bamit::sam_file_input_type sam_in{input};
+    seqan3::sam_file_input sam_in{input};
     {
         // Initialize variables for writing.
         std::ofstream out{tmp, std::ios_base::binary | std::ios_base::out};

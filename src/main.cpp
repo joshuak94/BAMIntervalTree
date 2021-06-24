@@ -131,11 +131,8 @@ int const parse_overlap_query(bamit::Position & start,
 int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, IndexOptions const & options)
 {
     std::vector<std::vector<bamit::Record>> records{};
-    if (options.threads != 0)
-    {
-        seqan3::contrib::bgzf_thread_count = options.threads;
-    }
-    bamit::sam_file_input_type input_file{options.input_path};
+    if (options.threads != 0) seqan3::contrib::bgzf_thread_count = options.threads;
+    seqan3::sam_file_input input_file{options.input_path};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
     node_list = bamit::index(input_file, options.verbose);
@@ -191,19 +188,13 @@ int parse_overlap(seqan3::argument_parser & parser)
       return -1;
     }
 
-    if (options.threads != 0)
-    {
-        seqan3::contrib::bgzf_thread_count = options.threads;
-    }
-    
-    bamit::sam_file_input_type input{options.input_path};
+    if (options.threads != 0) seqan3::contrib::bgzf_thread_count = options.threads;
+
+    seqan3::sam_file_input input{options.input_path};
     std::filesystem::path index_path{options.input_path};
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list;
     index_path.replace_extension("bam.bit");
-    if (!std::filesystem::exists(index_path))
-    {
-        run_index(node_list, options);
-    }
+    if (!std::filesystem::exists(index_path)) run_index(node_list, options);
     else
     {
         seqan3::debug_stream << "Reading index file...\n";
@@ -216,10 +207,7 @@ int parse_overlap(seqan3::argument_parser & parser)
     }
     seqan3::debug_stream << "Searching...\n";
     bamit::Position start, end;
-    if (parse_overlap_query(start, end, options, input.header().ref_ids()) == -1)
-    {
-        return -1;
-    }
+    if (parse_overlap_query(start, end, options, input.header().ref_ids()) == -1) return -1;
     if (options.verbose) seqan3::debug_stream << "Search: " << start << " " << end << "\n";
     bamit::get_overlap_records(input, node_list, start, end, options.verbose, options.out_file);
 
@@ -246,12 +234,9 @@ int main(int argc, char ** argv)
     }
 
     seqan3::argument_parser & sub_parser = top_level_parser.get_sub_parser();
-    if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-index"})
-        return parse_index(sub_parser);
-    else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-overlap"})
-        return parse_overlap(sub_parser);
-    else
-        seqan3::debug_stream << "Unhandled subparser named " << sub_parser.info.app_name << '\n';
+    if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-index"}) return parse_index(sub_parser);
+    else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-overlap"}) return parse_overlap(sub_parser);
+    else seqan3::debug_stream << "Unhandled subparser named " << sub_parser.info.app_name << '\n';
 
     return 0;
 }

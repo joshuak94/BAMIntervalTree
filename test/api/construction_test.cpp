@@ -23,7 +23,7 @@ TEST(tree_construct, simulated_chr1_small_golden)
 {
     std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
-    bamit::sam_file_input_type input_file{input};
+    seqan3::sam_file_input input_file{input};
 
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
@@ -50,7 +50,7 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
 {
     std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    bamit::sam_file_input_type input_file{input};
+    seqan3::sam_file_input input_file{input};
 
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
@@ -84,7 +84,7 @@ TEST(tree_construct, unsorted)
                     "test1\t16\ttestchr\t1\t60\t10M\t=\t1\t0\tGCGCGCGCGC\tFFFFFFFFFF\n";
     unsorted_sam.close();
 
-    bamit::sam_file_input_type input_file{unsorted_sam_path};
+    seqan3::sam_file_input input_file{unsorted_sam_path};
     EXPECT_THROW(bamit::index(input_file), seqan3::format_error);
 
     std::filesystem::remove(unsorted_sam_path);
