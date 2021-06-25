@@ -55,8 +55,8 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
     parser.add_option(options.input_path, 'i', "input_bam",
                       "The name of the SAM/BAM file to query.", seqan3::option_spec::required,
                       seqan3::input_file_validator{{"sam", "bam"}});
-    parser.add_option(options.out_file, 'o', "output_sam",
-                      "The SAM file, where the results should be stored.", seqan3::option_spec::standard,
+    parser.add_option(options.out_file, 'o', "output_bam",
+                      "The SAM/BAM file, where the results should be stored.", seqan3::option_spec::standard,
                       seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"sam", "bam"}});
     parser.add_option(options.start, 's', "start",
                       "The start of the interval to query, in the format chrA,posA."

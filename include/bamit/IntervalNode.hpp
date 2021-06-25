@@ -19,7 +19,7 @@ class IntervalNode
 {
 private:
     uint32_t start{}, end{};
-    std::streampos file_position{-1};
+    std::streamoff file_position{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
@@ -74,7 +74,7 @@ public:
         \brief Get the file position to the first read stored by this node.
         \return Returns a reference to a std::streampos which can be used to seek to a file position.
      */
-     std::streampos const & get_file_position() const
+     std::streamoff const & get_file_position() const
      {
          return file_position;
      }
@@ -83,7 +83,7 @@ public:
         \brief Set the file position to the first read for the current node.
         \param new_file_position The file position based on the records stored by this node.
      */
-     void set_file_position(std::streampos new_file_position)
+     void set_file_position(std::streamoff new_file_position)
      {
          this->file_position = std::move(new_file_position);
      }
@@ -131,7 +131,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(this->start, this->end, this->lNode, this->rNode, static_cast<std::streamoff>(this->file_position));
+        ar(this->start, this->end, this->lNode, this->rNode, this->file_position);
     }
 
 };
@@ -243,7 +243,7 @@ std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<seqan3::
             cur_records.clear();
             ++cur_index;
         }
-        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), it.file_position());
+        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), static_cast<std::streamoff>(it.file_position()));
     }
     if (verbose) seqan3::debug_stream << "Indexing chr " << input_file.header().ref_ids()[cur_index] << "...";
     construct_tree(result[cur_index], cur_records);
@@ -263,7 +263,7 @@ std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<seqan3::
 void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
                                uint32_t const & start,
                                uint32_t const & end,
-                               std::streampos & file_position)
+                               std::streamoff & file_position)
 {
     if (!node) return;
 
@@ -302,10 +302,10 @@ void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
 template<typename F, typename B>
 void get_correct_position(seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>, F, B> & input,
                           Position const & start,
-                          std::streampos & file_position)
+                          std::streamoff & file_position)
 {
     auto it = input.begin();
-    it.seek_to(file_position);
+    it.seek_to(static_cast<std::streampos>(file_position));
     for (; it != input.end(); ++it)
     {
         if (unmapped(*it)) continue;
@@ -335,14 +335,14 @@ void get_correct_position(seqan3::sam_file_input<seqan3::sam_file_input_default_
    \return Returns the file position of the first read in the interval, or -1 if no reads are found.
 */
 template<typename F, typename B>
-std::streampos get_overlap_records(seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>, F, B> & input,
+std::streamoff get_overlap_records(seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>, F, B> & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                    Position const & start,
                                    Position const & end,
                                    bool const & verbose = false,
                                    std::filesystem::path const & outname = "")
 {
-    std::streampos file_position{-1};
+    std::streamoff file_position{-1};
 
     // Look for the file position using the tree for the starting chromosome.
     if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.

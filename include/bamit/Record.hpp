@@ -20,7 +20,7 @@ inline bool unmapped(auto const & rec)
 struct Record
 {
     uint32_t start{}, end{};
-    std::streampos file_position{-1};
+    std::streamoff file_position{-1};
 
     /*!\name Constructors, destructor and assignment
      * \{
@@ -32,7 +32,7 @@ struct Record
     Record & operator=(Record &&)             = default; //!< Defaulted.
     ~Record()                                 = default; //!< Defaulted.
      //!\}
-    Record(uint32_t start_i, uint32_t end_i, std::streampos file_position_i) :
+    Record(uint32_t start_i, uint32_t end_i, std::streamoff file_position_i) :
         start{std::move(start_i)},
         end{std::move(end_i)},
         file_position{std::move(file_position_i)} {}
