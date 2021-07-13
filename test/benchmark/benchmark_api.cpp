@@ -82,7 +82,7 @@ TEST(benchmark, construct_and_search)
     {
         return;
     }
-    bamit::sam_file_input_type input_bam{large_file};
+    seqan3::sam_file_input input_bam{large_file};
 
     // Construct tree.
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
@@ -104,8 +104,8 @@ TEST(benchmark, construct_and_search)
     std::streampos result{-1};
     for (int i = 0; i < 100; i++)
     {
-        bamit::sam_file_input_type input_bam_write{large_file};
-        bamit::sam_file_input_type input_bam_offset{large_file};
+        seqan3::sam_file_input input_bam_write{large_file};
+        seqan3::sam_file_input input_bam_offset{large_file};
         get_random_position(start, end, input_bam.header());
         std::string query{"[" + std::to_string(std::get<0>(start)) + ", " +
                                 std::to_string(std::get<1>(start)) + "] - [" +

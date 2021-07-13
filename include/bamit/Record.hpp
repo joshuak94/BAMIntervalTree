@@ -6,30 +6,6 @@
 
 namespace bamit
 {
-using sam_file_input_fields = seqan3::fields<seqan3::field::id,
-                                             seqan3::field::seq,
-                                             seqan3::field::offset,
-                                             seqan3::field::ref_id,
-                                             seqan3::field::ref_offset,
-                                             seqan3::field::cigar,
-                                             seqan3::field::mapq,
-                                             seqan3::field::qual,
-                                             seqan3::field::flag,
-                                             seqan3::field::mate,
-                                             seqan3::field::header_ptr>;
-using sam_file_input_type = seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
-                                                   sam_file_input_fields,
-                                                   seqan3::type_list<seqan3::format_sam, seqan3::format_bam>>;
-
-using sam_file_output_fields = seqan3::fields<seqan3::field::id,
-                                              seqan3::field::flag,
-                                              seqan3::field::ref_id,
-                                              seqan3::field::ref_offset,
-                                              seqan3::field::mapq,
-                                              seqan3::field::cigar,
-                                              seqan3::field::mate,
-                                              seqan3::field::seq,
-                                              seqan3::field::qual>;
 
 using Position = std::tuple<int32_t, int32_t>;
 
@@ -44,7 +20,7 @@ inline bool unmapped(auto const & rec)
 struct Record
 {
     uint32_t start{}, end{};
-    std::streampos file_position{-1};
+    std::streamoff file_position{-1};
 
     /*!\name Constructors, destructor and assignment
      * \{
@@ -56,7 +32,7 @@ struct Record
     Record & operator=(Record &&)             = default; //!< Defaulted.
     ~Record()                                 = default; //!< Defaulted.
      //!\}
-    Record(uint32_t start_i, uint32_t end_i, std::streampos file_position_i) :
+    Record(uint32_t start_i, uint32_t end_i, std::streamoff file_position_i) :
         start{std::move(start_i)},
         end{std::move(end_i)},
         file_position{std::move(file_position_i)} {}
@@ -119,14 +95,9 @@ int32_t get_length(std::vector<seqan3::cigar> const & cigar)
     {
         seqan3::cigar::operation const op{get<1>(c)};
         uint32_t const length{get<0>(c)};
-        if (op == 'M'_cigar_operation ||
-            op == 'I'_cigar_operation ||
-            op == 'D'_cigar_operation ||
-            op == '='_cigar_operation ||
-            op == 'X'_cigar_operation)
-        {
+        if (op == 'M'_cigar_operation || op == 'I'_cigar_operation || op == 'D'_cigar_operation ||
+            op == '='_cigar_operation || op == 'X'_cigar_operation)
             result += length;
-        }
     }
     return result;
 }
