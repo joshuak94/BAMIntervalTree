@@ -19,11 +19,22 @@ void check_tree(std::unique_ptr<bamit::IntervalNode> const & root, int level, in
 
 }
 
+void compare_trees(std::unique_ptr<bamit::IntervalNode> const & t1, std::unique_ptr<bamit::IntervalNode> const & t2)
+{
+    if (!t1 && !t2) return;
+    if (!t1 || !t2) EXPECT_EQ(1, 0);
+
+    EXPECT_EQ(std::make_tuple(t1->get_start(), t1->get_end(), t1->get_file_position()),
+              std::make_tuple(t2->get_start(), t2->get_end(), t2->get_file_position()));
+    compare_trees(t1->get_left_node(), t2->get_left_node());
+    compare_trees(t1->get_right_node(), t2->get_right_node());
+}
+
 TEST(tree_construct, simulated_chr1_small_golden)
 {
     std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
-    bamit::sam_file_input_type input_file{input};
+    seqan3::sam_file_input input_file{input};
 
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
@@ -50,7 +61,7 @@ TEST(tree_construct, simulated_mult_chr_small_golden)
 {
     std::vector<std::vector<bamit::Record>> records{};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    bamit::sam_file_input_type input_file{input};
+    seqan3::sam_file_input input_file{input};
 
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list = bamit::index(input_file);
 
@@ -84,8 +95,32 @@ TEST(tree_construct, unsorted)
                     "test1\t16\ttestchr\t1\t60\t10M\t=\t1\t0\tGCGCGCGCGC\tFFFFFFFFFF\n";
     unsorted_sam.close();
 
-    bamit::sam_file_input_type input_file{unsorted_sam_path};
+    seqan3::sam_file_input input_file{unsorted_sam_path};
     EXPECT_THROW(bamit::index(input_file), seqan3::format_error);
 
     std::filesystem::remove(unsorted_sam_path);
+}
+
+TEST(tree_construct, different_fields)
+{
+    std::vector<std::vector<bamit::Record>> records{};
+    std::filesystem::path input{DATADIR"simulated_chr1_small_golden.bam"};
+
+    // Different fields for sam_file_input
+    seqan3::sam_file_input input_file{input};
+    seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
+                           seqan3::fields<seqan3::field::ref_id,
+                                          seqan3::field::ref_offset,
+                                          seqan3::field::cigar,
+                                          seqan3::field::flag>,
+                           seqan3::type_list<seqan3::format_bam>> input_file_minimal{input};
+
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list_default = bamit::index(input_file);
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list_minimal = bamit::index(input_file_minimal);
+    EXPECT_EQ(node_list_default.size(), node_list_minimal.size());
+
+    for (size_t i = 0; i < node_list_default.size(); ++i)
+    {
+        compare_trees(node_list_default[i], node_list_minimal[i]);
+    }
 }

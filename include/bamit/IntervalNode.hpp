@@ -1,6 +1,7 @@
 #pragma once
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sam_file/input.hpp>
+#include <seqan3/utility/type_pack/traits.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 
@@ -19,7 +20,7 @@ class IntervalNode
 {
 private:
     uint32_t start{}, end{};
-    std::streampos file_position{-1};
+    std::streamoff file_position{-1};
     std::unique_ptr<IntervalNode> lNode{nullptr};
     std::unique_ptr<IntervalNode> rNode{nullptr};
 public:
@@ -74,7 +75,7 @@ public:
         \brief Get the file position to the first read stored by this node.
         \return Returns a reference to a std::streampos which can be used to seek to a file position.
      */
-     std::streampos const & get_file_position() const
+     std::streamoff const & get_file_position() const
      {
          return file_position;
      }
@@ -83,7 +84,7 @@ public:
         \brief Set the file position to the first read for the current node.
         \param new_file_position The file position based on the records stored by this node.
      */
-     void set_file_position(std::streampos new_file_position)
+     void set_file_position(std::streamoff new_file_position)
      {
          this->file_position = std::move(new_file_position);
      }
@@ -131,7 +132,7 @@ public:
     template <class Archive>
     void serialize(Archive & ar)
     {
-        ar(this->start, this->end, this->lNode, this->rNode, static_cast<std::streamoff>(this->file_position));
+        ar(this->start, this->end, this->lNode, this->rNode, this->file_position);
     }
 
 };
@@ -167,10 +168,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
                     std::vector<Record> & records_i)
 {
     // If there are no records, exit.
-    if (records_i.empty())
-    {
-        return;
-    }
+    if (records_i.empty()) return;
     // Set node to an empty IntervalNode pointer.
     node = std::make_unique<IntervalNode>();
 
@@ -185,16 +183,9 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
     for (auto & r : records_i)
     {
         // Read ends before the median.
-        if (r.end < cur_median)
-        {
-            // Push it back into the first empty vector.
-            lRecords.push_back(std::move(r));
-        }
+        if (r.end < cur_median) lRecords.push_back(std::move(r));
         // Read starts after the median.
-        else if (r.start > cur_median)
-        {
-            rRecords.push_back(std::move(r));
-        }
+        else if (r.start > cur_median) rRecords.push_back(std::move(r));
         // Read intersects the median. Only store file position and start from the left-most read!
         // End is always updated while the read intersects the median.
         else
@@ -220,16 +211,27 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
    \brief Entry point into the recursive tree construction.
    \param input_file The input file to construct the tree over.
    \param verbose Print verbose output.
+   \tparam traits_type The type of the traits for seqan3::sam_file_input
+   \tparam fields_type The given fields.
+   \tparam format_type The format of the file.
    \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
            chromosome.
 */
-std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_file, bool const & verbose = false)
+template <typename traits_type, typename fields_type, typename format_type>
+std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_type, fields_type, format_type> & input_file, bool const & verbose = false)
 {
+    // Very first thing: Check that required fields are non-empty.
+    static_assert(fields_type::contains(seqan3::field::ref_id),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::ref_offset),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::cigar),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::flag),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
     // First make sure alingment file is sorted by coordinate.
     if (input_file.header().sorting != "coordinate")
-    {
         throw seqan3::format_error{"ERROR: Input file must be sorted by coordinate (e.g. samtools sort)"};
-    }
 
     // Vector containing result, initialized to # of chromosomes in header.
     std::vector<std::unique_ptr<IntervalNode>> result;
@@ -248,17 +250,15 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
         uint32_t position = (*it).reference_position().value();
         if (ref_id != cur_index)
         {
-            if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
-                                              << input_file.header().ref_ids()[cur_index] << "...";
+            if (verbose) seqan3::debug_stream << "Indexing chr " << input_file.header().ref_ids()[cur_index] << "...";
             construct_tree(result[cur_index], cur_records);
             if (verbose) seqan3::debug_stream << " Done!\n";
             cur_records.clear();
             ++cur_index;
         }
-        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), it.file_position());
+        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), static_cast<std::streamoff>(it.file_position()));
     }
-    if (verbose) seqan3::debug_stream << "Constructing tree for chromosome "
-                                      << input_file.header().ref_ids()[cur_index] << "...";
+    if (verbose) seqan3::debug_stream << "Indexing chr " << input_file.header().ref_ids()[cur_index] << "...";
     construct_tree(result[cur_index], cur_records);
     if (verbose) seqan3::debug_stream << " Done!\n";
 
@@ -274,14 +274,11 @@ std::vector<std::unique_ptr<IntervalNode>> index(sam_file_input_type & input_fil
    \param file_position The resulting position position.
 */
 void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
-                             uint32_t const & start,
-                             uint32_t const & end,
-                             std::streampos & file_position)
+                               uint32_t const & start,
+                               uint32_t const & end,
+                               std::streamoff & file_position)
 {
-    if (!node)
-    {
-        return;
-    }
+    if (!node) return;
 
     uint32_t cur_start = node->get_start();
     uint32_t cur_end = node->get_end();
@@ -299,13 +296,9 @@ void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
      * In case 6, do not store the file position and search the right subtree.
     */
     if (end < cur_start)
-    {
         get_overlap_file_position(node->get_left_node(), start, end, file_position);
-    }
     else if (start > cur_end)
-    {
         get_overlap_file_position(node->get_right_node(), start, end, file_position);
-    }
     else
     {
         file_position = node->get_file_position();
@@ -319,12 +312,23 @@ void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
    \param start The start of the given query.
    \param file_position The position to move along.
  */
-void get_correct_position(sam_file_input_type & input,
-                        Position const & start,
-                        std::streampos & file_position)
+ template <typename traits_type, typename fields_type, typename format_type>
+void get_correct_position(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
+                          Position const & start,
+                          std::streamoff & file_position)
 {
+    // Very first thing: Check that required fields are non-empty.
+    static_assert(fields_type::contains(seqan3::field::ref_id),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::ref_offset),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::cigar),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::flag),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+
     auto it = input.begin();
-    it.seek_to(file_position);
+    it.seek_to(static_cast<std::streampos>(file_position));
     for (; it != input.end(); ++it)
     {
         if (unmapped(*it)) continue;
@@ -343,7 +347,7 @@ void get_correct_position(sam_file_input_type & input,
 
 /*!
    \brief Find the records which overlap a given start and end position.
-   \param input The sam file input of type bamit::sam_file_input_type.
+   \param input The sam file input of type bamit::seqan3::sam_file_input.
    \param node_list The list of interval trees.
    \param start The start position of the search.
    \param end The end position of the search.
@@ -353,20 +357,29 @@ void get_correct_position(sam_file_input_type & input,
 
    \return Returns the file position of the first read in the interval, or -1 if no reads are found.
 */
-std::streampos get_overlap_records(sam_file_input_type & input,
+template <typename traits_type, typename fields_type, typename format_type>
+std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
                                    std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                    Position const & start,
                                    Position const & end,
                                    bool const & verbose = false,
                                    std::filesystem::path const & outname = "")
 {
-    std::streampos file_position{-1};
+    // Very first thing: Check that required fields are non-empty.
+    static_assert(fields_type::contains(seqan3::field::ref_id),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::ref_offset),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::cigar),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+    static_assert(fields_type::contains(seqan3::field::flag),
+                  "Input file must define fields seqan3::field::ref_id, seqan3::field::ref_offset, seqan3::field::cigar, and seqan3::field::flag");
+
+    std::streamoff file_position{-1};
 
     // Look for the file position using the tree for the starting chromosome.
     if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
-    {
         get_overlap_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
-    }
     else // Searching across multiple chromosomes.
     {
         for (uint32_t i = std::get<0>(start); i < std::get<0>(end); ++i)
@@ -382,8 +395,7 @@ std::streampos get_overlap_records(sam_file_input_type & input,
 
             // If we find the left-most position we can stop. Otherwise we have to check the next tree if
             // the overlap spans more than one chromosome.
-            if (file_position != -1)
-                break;
+            if (file_position != -1) break;
         }
     }
 
@@ -401,16 +413,13 @@ std::streampos get_overlap_records(sam_file_input_type & input,
         std::vector<int32_t> ref_lengths{};
         std::transform(std::begin(input.header().ref_id_info), std::end(input.header().ref_id_info),
                        std::back_inserter(ref_lengths), [](auto const & pair){ return std::get<0>(pair); });
-        seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths, bamit::sam_file_output_fields{}};
+        seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths};
         auto it = input.begin();
         it.seek_to(file_position);
         for (; it != input.end(); ++it)
         {
             if (unmapped(*it)) continue;
-            if (std::make_tuple((*it).reference_id().value(), (*it).reference_position().value()) > end)
-            {
-                break;
-            }
+            if (std::make_tuple((*it).reference_id().value(), (*it).reference_position().value()) > end) break;
             fout.push_back(*it);
         }
     }

@@ -13,16 +13,17 @@ TEST(write_read_test, write_read_test)
     bamit::Position start{1, 100};
     bamit::Position end{1, 150};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};
-    bamit::sam_file_input_type sam_in{input};
     {
         // Initialize variables for writing.
+        seqan3::sam_file_input sam_in{input};
+        seqan3::sam_file_input sam_in_2{input};
         std::ofstream out{tmp, std::ios_base::binary | std::ios_base::out};
         std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
         std::vector<std::vector<bamit::Record>> records{};
         cereal::BinaryOutputArchive ar(out);
 
         node_list = bamit::index(sam_in);
-        result = bamit::get_overlap_records(sam_in, node_list, start, end);
+        result = bamit::get_overlap_records(sam_in_2, node_list, start, end);
 
         // Write tree to output.
         bamit::write(node_list, ar);
@@ -30,6 +31,7 @@ TEST(write_read_test, write_read_test)
     }
     {
         // Initialize variables for reading.
+        seqan3::sam_file_input sam_in{input};
         std::ifstream in{tmp, std::ios_base::binary | std::ios_base::in};
         std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
         cereal::BinaryInputArchive ar(in);
