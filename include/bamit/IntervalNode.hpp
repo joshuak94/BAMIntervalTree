@@ -211,6 +211,9 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
    \brief Entry point into the recursive tree construction.
    \param input_file The input file to construct the tree over.
    \param verbose Print verbose output.
+   \tparam traits_type The type of the traits for seqan3::sam_file_input
+   \tparam fields_type The given fields.
+   \tparam format_type The format of the file.
    \return Returns a vector of IntervalNodes, each of which is the root node of an Interval Tree over its respective
            chromosome.
 */
