@@ -80,6 +80,7 @@ TEST(benchmark, construct_and_search)
     std::filesystem::path large_file{DATADIR"large_file.bam"};
     if (!std::filesystem::exists(large_file))
     {
+        seqan3::debug_stream << "large_file.bam does not exist in the data directory.";
         return;
     }
     seqan3::sam_file_input input_bam{large_file};

@@ -8,8 +8,8 @@
 TEST(write_read_test, write_read_test)
 {
     std::filesystem::path tmp = std::filesystem::temp_directory_path()/"intervaltree";
-    std::streampos result{-1};
-    std::streampos result_after_reading{-1};
+    std::streamoff result{-1};
+    std::streamoff result_after_reading{-1};
     bamit::Position start{1, 100};
     bamit::Position end{1, 150};
     std::filesystem::path input{DATADIR"simulated_mult_chr_small_golden.bam"};

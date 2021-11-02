@@ -73,7 +73,7 @@ public:
 
      /*!
         \brief Get the file position to the first read stored by this node.
-        \return Returns a reference to a std::streampos which can be used to seek to a file position.
+        \return Returns a reference to a std::streamoff which can be used to seek to a file position.
      */
      std::streamoff const & get_file_position() const
      {
@@ -336,7 +336,7 @@ void get_correct_position(seqan3::sam_file_input<traits_type, fields_type, forma
         if (std::make_tuple((*it).reference_id().value(),
                             (*it).reference_position().value() + get_length((*it).cigar_sequence())) >= start)
         {
-            file_position = it.file_position();
+            file_position = static_cast<std::streamoff>(it.file_position());
             return;
         }
     }
