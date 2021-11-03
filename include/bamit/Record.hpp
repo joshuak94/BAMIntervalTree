@@ -14,7 +14,7 @@ inline bool unmapped(auto const & rec)
     return (rec.reference_id().value_or(-1) == -1) ||
            (rec.reference_position().value_or(-1) == -1) ||
            (static_cast<bool>(rec.flag() & seqan3::sam_flag::unmapped));
-};
+}
 
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
