@@ -85,7 +85,7 @@ struct RecordComparatorEnd
    \param cigar The vector of seqan3::cigar characters.
    \return Returns the length of M/I/D/=/X.
 */
-int32_t get_length(std::vector<seqan3::cigar> const & cigar)
+inline int32_t get_length(std::vector<seqan3::cigar> const & cigar)
 {
     using seqan3::operator""_cigar_operation;
     using seqan3::get;
