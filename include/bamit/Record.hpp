@@ -14,7 +14,7 @@ inline bool unmapped(auto const & rec)
     return (rec.reference_id().value_or(-1) == -1) ||
            (rec.reference_position().value_or(-1) == -1) ||
            (static_cast<bool>(rec.flag() & seqan3::sam_flag::unmapped));
-};
+}
 
 /*! A Record object contains pertinent information about an alignment. */
 struct Record
@@ -85,7 +85,7 @@ struct RecordComparatorEnd
    \param cigar The vector of seqan3::cigar characters.
    \return Returns the length of M/I/D/=/X.
 */
-int32_t get_length(std::vector<seqan3::cigar> const & cigar)
+inline int32_t get_length(std::vector<seqan3::cigar> const & cigar)
 {
     using seqan3::operator""_cigar_operation;
     using seqan3::get;

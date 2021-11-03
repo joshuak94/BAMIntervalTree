@@ -145,7 +145,7 @@ public:
    The median is calculated by sorting all of the starts and ends from a list of records. Since each record
    has a start and end, the list is an even length and the median is the average of the middle two positions.
 */
-uint32_t calculate_median(std::vector<Record> const & records_i)
+inline uint32_t calculate_median(std::vector<Record> const & records_i)
 {
     std::vector<uint32_t> values{};
     values.reserve(records_i.size() * 2);
@@ -164,7 +164,7 @@ uint32_t calculate_median(std::vector<Record> const & records_i)
    \param node The current node to fill.
    \param records_i The list of records to create the tree over.
 */
-void construct_tree(std::unique_ptr<IntervalNode> & node,
+inline void construct_tree(std::unique_ptr<IntervalNode> & node,
                     std::vector<Record> & records_i)
 {
     // If there are no records, exit.
@@ -218,7 +218,7 @@ void construct_tree(std::unique_ptr<IntervalNode> & node,
            chromosome.
 */
 template <typename traits_type, typename fields_type, typename format_type>
-std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_type, fields_type, format_type> & input_file, bool const & verbose = false)
+inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_type, fields_type, format_type> & input_file, bool const & verbose = false)
 {
     // Very first thing: Check that required fields are non-empty.
     static_assert(fields_type::contains(seqan3::field::ref_id),
@@ -273,10 +273,10 @@ std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_t
    \param end The end position of the search.
    \param file_position The resulting position position.
 */
-void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
-                               uint32_t const & start,
-                               uint32_t const & end,
-                               std::streamoff & file_position)
+inline void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
+                                      uint32_t const & start,
+                                      uint32_t const & end,
+                                      std::streamoff & file_position)
 {
     if (!node) return;
 
@@ -312,10 +312,10 @@ void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
    \param start The start of the given query.
    \param file_position The position to move along.
  */
- template <typename traits_type, typename fields_type, typename format_type>
-void get_correct_position(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
-                          Position const & start,
-                          std::streamoff & file_position)
+template <typename traits_type, typename fields_type, typename format_type>
+inline void get_correct_position(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
+                                 Position const & start,
+                                 std::streamoff & file_position)
 {
     // Very first thing: Check that required fields are non-empty.
     static_assert(fields_type::contains(seqan3::field::ref_id),
@@ -358,12 +358,12 @@ void get_correct_position(seqan3::sam_file_input<traits_type, fields_type, forma
    \return Returns the file position of the first read in the interval, or -1 if no reads are found.
 */
 template <typename traits_type, typename fields_type, typename format_type>
-std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
-                                   std::vector<std::unique_ptr<IntervalNode>> const & node_list,
-                                   Position const & start,
-                                   Position const & end,
-                                   bool const & verbose = false,
-                                   std::filesystem::path const & outname = "")
+inline std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
+                                          std::vector<std::unique_ptr<IntervalNode>> const & node_list,
+                                          Position const & start,
+                                          Position const & end,
+                                          bool const & verbose = false,
+                                          std::filesystem::path const & outname = "")
 {
     // Very first thing: Check that required fields are non-empty.
     static_assert(fields_type::contains(seqan3::field::ref_id),
@@ -427,13 +427,13 @@ std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fields_ty
 }
 
 template <class Archive>
-void write(std::vector<std::unique_ptr<IntervalNode>> const & node_list, Archive & archive)
+inline void write(std::vector<std::unique_ptr<IntervalNode>> const & node_list, Archive & archive)
 {
     archive(node_list);
 }
 
 template <class Archive>
-void read(std::vector<std::unique_ptr<IntervalNode>> & node_list, Archive & archive)
+inline void read(std::vector<std::unique_ptr<IntervalNode>> & node_list, Archive & archive)
 {
     archive(node_list);
 }
