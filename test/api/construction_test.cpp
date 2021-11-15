@@ -5,7 +5,7 @@
 
 // Recursive function to go through the tree and check the medians.
 void check_tree(std::unique_ptr<bamit::IntervalNode> const & root, int level, int pos,
-                   std::vector<std::tuple<uint32_t, uint32_t>> const & expected_values)
+                std::vector<std::tuple<uint32_t, uint32_t>> const & expected_values)
 {
     EXPECT_EQ(std::make_tuple(root->get_start(), root->get_end()), expected_values[pow(2, level) - 1 + pos]);
     if(root->get_left_node())
@@ -21,8 +21,8 @@ void check_tree(std::unique_ptr<bamit::IntervalNode> const & root, int level, in
 
 void compare_trees(std::unique_ptr<bamit::IntervalNode> const & t1, std::unique_ptr<bamit::IntervalNode> const & t2)
 {
-    if (!t1 && !t2) return;
-    if (!t1 || !t2) EXPECT_EQ(1, 0);
+    if (!t1 && !t2) {return;}
+    if (!t1 || !t2) {EXPECT_EQ(1, 0);}
 
     EXPECT_EQ(std::make_tuple(t1->get_start(), t1->get_end(), t1->get_file_position()),
               std::make_tuple(t2->get_start(), t2->get_end(), t2->get_file_position()));

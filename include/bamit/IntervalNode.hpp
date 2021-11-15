@@ -139,7 +139,7 @@ public:
 
 /*!
    \brief Calculate the median for a set of records based on the starts and ends of all records.
-   \param records_i The list of records to calculate a median off of.
+   \param records_i The list of records from which the median is computed.
    \return Returns a tuple of chromosome of median and the median value.
 
    The median is calculated by sorting all of the starts and ends from a list of records. Since each record
@@ -165,7 +165,7 @@ inline uint32_t calculate_median(std::vector<Record> const & records_i)
    \param records_i The list of records to create the tree over.
 */
 inline void construct_tree(std::unique_ptr<IntervalNode> & node,
-                    std::vector<Record> & records_i)
+                           std::vector<Record> & records_i)
 {
     // If there are no records, exit.
     if (records_i.empty()) return;
@@ -218,7 +218,10 @@ inline void construct_tree(std::unique_ptr<IntervalNode> & node,
            chromosome.
 */
 template <typename traits_type, typename fields_type, typename format_type>
-inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_type, fields_type, format_type> & input_file, bool const & verbose = false)
+inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<traits_type,
+                                                                               fields_type,
+                                                                               format_type> & input_file,
+                                                        bool const & verbose = false)
 {
     // Very first thing: Check that required fields are non-empty.
     static_assert(fields_type::contains(seqan3::field::ref_id),
@@ -256,7 +259,9 @@ inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<t
             cur_records.clear();
             ++cur_index;
         }
-        cur_records.emplace_back(position, position + get_length((*it).cigar_sequence()), static_cast<std::streamoff>(it.file_position()));
+        cur_records.emplace_back(position,
+                                 position + get_length((*it).cigar_sequence()),
+                                 static_cast<std::streamoff>(it.file_position()));
     }
     if (verbose) seqan3::debug_stream << "Indexing chr " << input_file.header().ref_ids()[cur_index] << "...";
     construct_tree(result[cur_index], cur_records);
@@ -382,15 +387,15 @@ inline std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fi
         get_overlap_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
     else // Searching across multiple chromosomes.
     {
-        for (uint32_t i = std::get<0>(start); i < std::get<0>(end); ++i)
+        for (uint32_t i = std::get<0>(start); i < (uint32_t) std::get<0>(end); ++i)
         {
             // Start at given start only for the first chromosome, otherwise start searching from 0.
             // For the first chromosome, we want the actual start position of the query. If no reads
             // in the chromosome are in our query, we want to search the tree of the next chromosome
             // starting from the beginning.
-            uint32_t start_position = std::get<0>(start) == i ? std::get<1>(start) : 0;
+            uint32_t start_position = (uint32_t) std::get<0>(start) == i ? (uint32_t) std::get<1>(start) : 0;
             // End at given end if at the last chromosome, otherwise end at end of chromosome.
-            uint32_t end_position = std::get<0>(end) == i ? std::get<1>(end) : std::numeric_limits<uint32_t>::max();
+            uint32_t end_position = (uint32_t) std::get<0>(end) == i ? (uint32_t) std::get<1>(end) : std::numeric_limits<uint32_t>::max();
             get_overlap_file_position(node_list[i], start_position, end_position, file_position);
 
             // If we find the left-most position we can stop. Otherwise we have to check the next tree if
@@ -437,4 +442,4 @@ inline void read(std::vector<std::unique_ptr<IntervalNode>> & node_list, Archive
 {
     archive(node_list);
 }
-}
+} // namespace bamit

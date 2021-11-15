@@ -1,7 +1,7 @@
 #include <htslib/sam.h>
 #include <thread>
 
-int sam_readrec(BGZF *ignored, void *fpv, void *bv, int *tid, hts_pos_t *beg, hts_pos_t *end)
+int sam_readrec([[maybe_unused]] BGZF *ignored, void *fpv, void *bv, int *tid, hts_pos_t *beg, hts_pos_t *end)
 {
     htsFile *fp = (htsFile *)fpv;
     bam1_t *b = (bam1_t *)bv;
@@ -23,7 +23,7 @@ int htslib_index(const char * input)
 void htslib_overlap_file_offset(hts_idx_t * index, sam_hdr_t * header, char ** region, int count)
 {
     hts_itr_t *iter;
-    iter = sam_itr_regarray(index, header, region, count);
+    [[maybe_unused]] iter = sam_itr_regarray(index, header, region, count);
 }
 
 int htslib_overlap_records(hts_idx_t * index, sam_hdr_t * header, char ** region, int count, htsFile * in, htsFile * out)

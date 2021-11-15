@@ -25,7 +25,7 @@ void initialize_top_parser(seqan3::argument_parser & parser)
     parser.info.author = "Joshua Kim, Mitra Darvish";
     parser.info.app_name = "BAMIntervalTree";
     parser.info.man_page_title = "An Interval Tree indexer for BAM/SAM files.";
-    parser.info.short_description = "Create an Interval Tree over an aligment file for quick range queries.";
+    parser.info.short_description = "Create an Interval Tree over an alignment file for quick range queries.";
     parser.info.version = "0.0.1";
     parser.info.date = "24-03-2021";    // last update
     parser.info.email = "kim_j@molgen.mpg.de";
@@ -83,10 +83,10 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
    \param ref_ids The reference chromosome names, stored in a deque by seqan3.
    \return 0 if the parsing was successful, -1 otherwise.
 */
-int const parse_overlap_query(bamit::Position & start,
-                              bamit::Position & end,
-                              OverlapOptions const & options,
-                              std::deque<std::string> const & ref_ids)
+int parse_overlap_query(bamit::Position & start,
+                        bamit::Position & end,
+                        OverlapOptions const & options,
+                        std::deque<std::string> const & ref_ids)
 {
     // Get the location of the colon in the start and end.
     size_t const start_split = options.start.find(',');
