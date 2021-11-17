@@ -42,7 +42,7 @@ struct Record
        \param rhs The second record.
        \return Returns `true` if the two records are equal, with respect to chromosome and position.
     */
-    bool operator== (Record const & rhs) const
+    bool operator==(Record const & rhs) const
     {
         return (start == rhs.start && end == rhs.end);
     }
@@ -58,7 +58,7 @@ struct RecordComparatorStart
        \return Returns `true` if record1 starts before record2, or if they both start at the same position but
                record1 ends before record2.
     */
-    bool operator ()(Record const & record1, Record const & record2)
+    bool operator()(Record const & record1, Record const & record2)
     {
         return (record1.start == record2.start) ? (record1.end < record2.end) : (record1.start < record2.start);
     }
@@ -74,7 +74,7 @@ struct RecordComparatorEnd
        \return Returns `true` if record1 ends after record2, or if they both end at the same position but
                record1 starts after record2.
     */
-    bool operator ()(Record const & record1, Record const & record2)
+    bool operator()(Record const & record1, Record const & record2)
     {
         return (record1.end == record2.end) ? (record1.start > record2.start) : (record1.end > record2.end);
     }
@@ -101,4 +101,4 @@ inline int32_t get_length(std::vector<seqan3::cigar> const & cigar)
     }
     return result;
 }
-}
+} // namespace bamit
