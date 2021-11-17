@@ -35,6 +35,7 @@ struct EstimationResult
    \param input_file The input alignment file in sam/bam format.
    \param bamit_index The vector of indices for each chromosome.
    \param sample_value The number of positions to sample.
+   \param seed The seed to use for the random generator. Enables reproducibility. Default is 0.
 
    \details This function samples an alignment file at `sample_value` different random positions according to a uniform
             distribution and gives the read depth of the file as a series of statistics with mean, median, mode, sd and
@@ -45,15 +46,15 @@ struct EstimationResult
 template <typename traits_type, typename fields_type, typename format_type>
 inline EstimationResult sample_read_depth(seqan3::sam_file_input<traits_type, fields_type, format_type> & input_file,
                                           std::vector<std::unique_ptr<IntervalNode>> const & bamit_index,
-                                          uint64_t const & sample_value)
+                                          uint64_t const & sample_value,
+                                          uint64_t const & seed = 0)
     {
         if (sample_value <= 1) throw std::invalid_argument("sample_value must be greater than 1.");
         auto & header = input_file.header(); // Obtain the header from the input file.
         // Intialize vector of read depths at # of positions defined by sample_value.
         std::vector<uint64_t> read_depths(sample_value);
         std::map<double, uint64_t> depth_counts{}; // Counts how often each depth occurs.
-        std::random_device rd; // obtain a random number from hardware
-        std::mt19937 gen(rd()); // seed the generator
+        std::mt19937 gen(seed); // seed the generator
         std::uniform_int_distribution<> distr_chr(0, header.ref_ids().size() - 1); // define the range
 
         uint64_t rand_pos, rand_chr;
@@ -91,6 +92,7 @@ inline EstimationResult sample_read_depth(seqan3::sam_file_input<traits_type, fi
                       });
 
         EstimationResult result;
+        seqan3::debug_stream << "read_depths: " << read_depths << "\ndepth_counts: " << depth_counts << '\n';
         result.mean = std::accumulate(read_depths.begin(), read_depths.end(), 0) / (double) sample_value;
         // If sample_value is even, median is average of two middle numbers. Otherwise, it is just the one number.
         result.median = sample_value % 2 == 0 ? (read_depths[sample_value / 2 - 1] + read_depths[sample_value / 2]) / (double) 2
