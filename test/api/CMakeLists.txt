@@ -8,3 +8,5 @@ add_api_test (search_test.cpp)
 target_use_datasources (search_test FILES samtools_result.sam)
 
 add_api_test (write_read_test.cpp)
+
+add_api_test (sample_functions_test.cpp)
