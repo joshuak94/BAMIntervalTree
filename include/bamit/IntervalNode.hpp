@@ -360,10 +360,10 @@ inline void get_correct_position(seqan3::sam_file_input<traits_type, fields_type
    \param outname The output filename. If not provided the function will only return the file position and
                   not write to any file.
 
-   \return Returns the file position of the first read in the interval, or -1 if no reads are found.
+   \return Returns a vector of seqan3::sam_record objects containing records overlapping the query.
 */
 template <typename traits_type, typename fields_type, typename format_type>
-inline std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
+inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
                                           std::vector<std::unique_ptr<IntervalNode>> const & node_list,
                                           Position const & start,
                                           Position const & end,
@@ -404,14 +404,19 @@ inline std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fi
         }
     }
 
-    if (file_position == -1)
+    // Move the file_position pointer to the first read overlapping, instead of closest node in tree.
+    if (file_position != -1) get_correct_position(input, start, file_position);
+
+    // Store reads which start before the end of the query, filtering out unmapped reads.
+    auto results_list = input | std::views::take_while([file_position](auto & rec) {return file_position != -1;})
+                              | std::views::take_while([end](auto & rec) {return std::make_tuple(rec.reference_id().value(), rec.reference_position().value()) < end;})
+                              | std::views::filter([](auto & rec) {return !unmapped(rec);})
+                              | seqan3::views::to<std::vector>;
+    if (results_list.empty())
     {
         if (verbose) seqan3::debug_stream << "No overlapping reads found.\n";
-        return file_position;
+        // return results_list;
     }
-
-    get_correct_position(input, start, file_position);
-
     if (!outname.empty())
     {
         // Need to extract chromosome lengths for the output header file.
@@ -419,16 +424,9 @@ inline std::streamoff get_overlap_records(seqan3::sam_file_input<traits_type, fi
         std::transform(std::begin(input.header().ref_id_info), std::end(input.header().ref_id_info),
                        std::back_inserter(ref_lengths), [](auto const & pair){ return std::get<0>(pair); });
         seqan3::sam_file_output fout{outname, input.header().ref_ids(), ref_lengths};
-        auto it = input.begin();
-        it.seek_to(file_position);
-        for (; it != input.end(); ++it)
-        {
-            if (unmapped(*it)) continue;
-            if (std::make_tuple((*it).reference_id().value(), (*it).reference_position().value()) > end) break;
-            fout.push_back(*it);
-        }
+        results_list | fout;
     }
-    return file_position;
+    return results_list;
 }
 
 template <class Archive>

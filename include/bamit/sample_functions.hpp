@@ -59,7 +59,6 @@ inline EstimationResult sample_read_depth(seqan3::sam_file_input<traits_type, fi
 
         uint64_t rand_pos, rand_chr;
         std::tuple<uint64_t, uint64_t> pos_tuple;
-        std::streamoff position{-1};
         auto it = input_file.begin();
 
         // For each sample, increment its associated read_depths[i] for each mapped read overlapping the position.
@@ -72,27 +71,15 @@ inline EstimationResult sample_read_depth(seqan3::sam_file_input<traits_type, fi
             rand_pos = distr_pos(gen);
             pos_tuple = std::make_tuple(rand_chr, rand_pos);
 
-            // Get file position of the above location.
-            position = get_overlap_records(input_file, bamit_index, pos_tuple, pos_tuple);
-
-            if (position == -1) continue; // The position is not covered by any reads.
-            it.seek_to(position);
-            // Count number of reads which overlap the position.
-            for (; it != input_file.end(); ++it)
-            {
-                if (unmapped(*it)) continue;
-                if (std::make_tuple((*it).reference_id().value(), (*it).reference_position().value()) > pos_tuple) break;
-                ++i;
-            }
+            // Get list of records of the above location.
+            auto results = get_overlap_records(input_file, bamit_index, pos_tuple, pos_tuple);
+            i = results.size();
         }
         std::sort(read_depths.begin(), read_depths.end());
         std::for_each(read_depths.begin(), read_depths.end(),
-                      [&depth_counts](uint64_t const & value) {
-                          ++(depth_counts[value]);
-                      });
+                      [&depth_counts](uint64_t const & value) {++(depth_counts[value]);});
 
         EstimationResult result;
-        seqan3::debug_stream << "read_depths: " << read_depths << "\ndepth_counts: " << depth_counts << '\n';
         result.mean = std::accumulate(read_depths.begin(), read_depths.end(), 0) / (double) sample_value;
         // If sample_value is even, median is average of two middle numbers. Otherwise, it is just the one number.
         result.median = sample_value % 2 == 0 ? (read_depths[sample_value / 2 - 1] + read_depths[sample_value / 2]) / (double) 2
