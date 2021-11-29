@@ -276,9 +276,9 @@ inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<t
    \param node The current node to search.
    \param start The start position of the search.
    \param end The end position of the search.
-   \param file_position The resulting position position.
-*/
-inline void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node,
+   \param file_position The resulting file position.
+ */
+inline void get_current_file_position(std::unique_ptr<IntervalNode> const & node,
                                       uint32_t const & start,
                                       uint32_t const & end,
                                       std::streamoff & file_position)
@@ -301,13 +301,13 @@ inline void get_overlap_file_position(std::unique_ptr<IntervalNode> const & node
      * In case 6, do not store the file position and search the right subtree.
     */
     if (end < cur_start)
-        get_overlap_file_position(node->get_left_node(), start, end, file_position);
+        get_current_file_position(node->get_left_node(), start, end, file_position);
     else if (start > cur_end)
-        get_overlap_file_position(node->get_right_node(), start, end, file_position);
+        get_current_file_position(node->get_right_node(), start, end, file_position);
     else
     {
         file_position = node->get_file_position();
-        get_overlap_file_position(node->get_left_node(), start, end, file_position);
+        get_current_file_position(node->get_left_node(), start, end, file_position);
     }
 }
 
@@ -351,6 +351,50 @@ inline void get_correct_position(seqan3::sam_file_input<traits_type, fields_type
 }
 
 /*!
+   \brief Obtain the file position of the first record which overlaps a query.
+   \param input The sam file input of type bamit::seqan3::sam_file_input.
+   \param node_list The list of interval nodes per chromosome
+   \param start The start Position of the search.
+   \param end The end Position of the search.
+   \param file_position The resulting file position.
+ */
+template <typename traits_type, typename fields_type, typename format_type>
+inline void get_overlap_file_position(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
+                                      std::vector<std::unique_ptr<IntervalNode>> const & node_list,
+                                      Position const & start,
+                                      Position const & end,
+                                      std::streamoff & file_position)
+{
+    if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
+    {
+        get_current_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
+        get_correct_position(input, start, file_position);
+    }
+    else // Searching across multiple chromosomes.
+    {
+        for (uint32_t i = std::get<0>(start); i < (uint32_t) std::get<0>(end); ++i)
+        {
+            // Start at given start only for the first chromosome, otherwise start searching from 0.
+            // For the first chromosome, we want the actual start position of the query. If no reads
+            // in the chromosome are in our query, we want to search the tree of the next chromosome
+            // starting from the beginning.
+            uint32_t start_position = (uint32_t) std::get<0>(start) == i ? (uint32_t) std::get<1>(start) : 0;
+            // End at given end if at the last chromosome, otherwise end at end of chromosome.
+            uint32_t end_position = (uint32_t) std::get<0>(end) == i ? (uint32_t) std::get<1>(end) : std::numeric_limits<uint32_t>::max();
+            get_current_file_position(node_list[i], start_position, end_position, file_position);
+
+            // If we find the left-most position we can stop. Otherwise we have to check the next tree if
+            // the overlap spans more than one chromosome.
+            if (file_position != -1)
+            {
+                get_correct_position(input, start, file_position);
+                break;
+            }
+        }
+    }
+}
+
+/*!
    \brief Find the records which overlap a given start and end position.
    \param input The sam file input of type bamit::seqan3::sam_file_input.
    \param node_list The list of interval trees.
@@ -364,11 +408,11 @@ inline void get_correct_position(seqan3::sam_file_input<traits_type, fields_type
 */
 template <typename traits_type, typename fields_type, typename format_type>
 inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
-                                          std::vector<std::unique_ptr<IntervalNode>> const & node_list,
-                                          Position const & start,
-                                          Position const & end,
-                                          bool const & verbose = false,
-                                          std::filesystem::path const & outname = "")
+                                std::vector<std::unique_ptr<IntervalNode>> const & node_list,
+                                Position const & start,
+                                Position const & end,
+                                bool const & verbose = false,
+                                std::filesystem::path const & outname = "")
 {
     // Very first thing: Check that required fields are non-empty.
     static_assert(fields_type::contains(seqan3::field::ref_id),
@@ -382,42 +426,19 @@ inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type,
 
     std::streamoff file_position{-1};
 
-    // Look for the file position using the tree for the starting chromosome.
-    if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
-        get_overlap_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
-    else // Searching across multiple chromosomes.
-    {
-        for (uint32_t i = std::get<0>(start); i < (uint32_t) std::get<0>(end); ++i)
-        {
-            // Start at given start only for the first chromosome, otherwise start searching from 0.
-            // For the first chromosome, we want the actual start position of the query. If no reads
-            // in the chromosome are in our query, we want to search the tree of the next chromosome
-            // starting from the beginning.
-            uint32_t start_position = (uint32_t) std::get<0>(start) == i ? (uint32_t) std::get<1>(start) : 0;
-            // End at given end if at the last chromosome, otherwise end at end of chromosome.
-            uint32_t end_position = (uint32_t) std::get<0>(end) == i ? (uint32_t) std::get<1>(end) : std::numeric_limits<uint32_t>::max();
-            get_overlap_file_position(node_list[i], start_position, end_position, file_position);
-
-            // If we find the left-most position we can stop. Otherwise we have to check the next tree if
-            // the overlap spans more than one chromosome.
-            if (file_position != -1) break;
-        }
-    }
-
-    // Move the file_position pointer to the first read overlapping, instead of closest node in tree.
-    if (file_position != -1) get_correct_position(input, start, file_position);
+    // Get the file position of the first record matching start query.
+    get_overlap_file_position(input, node_list, start, end, file_position);
 
     // Store reads which start before the end of the query, filtering out unmapped reads.
     auto results_list = input | std::views::take_while([file_position](auto & rec) {return file_position != -1;})
                               | std::views::take_while([end](auto & rec) {return std::make_tuple(rec.reference_id().value(), rec.reference_position().value()) < end;})
                               | std::views::filter([](auto & rec) {return !unmapped(rec);})
                               | seqan3::views::to<std::vector>;
-    if (results_list.empty())
+    if (results_list.empty() && verbose)
     {
-        if (verbose) seqan3::debug_stream << "No overlapping reads found.\n";
-        // return results_list;
+        seqan3::debug_stream << "No overlapping reads found for query " << start << " - " << end << "\n";
     }
-    if (!outname.empty())
+    if (!outname.empty()) // Outputs an empty file if the list is empty.
     {
         // Need to extract chromosome lengths for the output header file.
         std::vector<int32_t> ref_lengths{};
