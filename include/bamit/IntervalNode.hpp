@@ -271,12 +271,18 @@ inline std::vector<std::unique_ptr<IntervalNode>> index(seqan3::sam_file_input<t
 }
 
 /*!
-   \brief Find the file offstream position that is close to the start of the range by traversing the tree. The offstream
-          position is guaranteed to be to the left of the start.
+   \brief Find the closest file offset to an overlap query which is stored in the Interval Tree. This may not be the
+          record which actually overlaps the query, but it is guaranteed to be to the left of the query.
    \param node The current node to search.
    \param start The start position of the search.
    \param end The end position of the search.
    \param file_position The resulting file position.
+   \details This function traverses an interval tree looking for the file position of the closest record to the overlap
+            query stored within the tree. Note that this record may not actually overlap the query itself, but is
+            guaranteed to be to the left of the overlap query. Thus, this function should be paired with
+            bamit::get_correct_position, which will then update the file position to the first record which actually
+            overlaps the query. These two functions are used by bamit::get_overlap_file_position to obtain the file
+            position of the first record overlapping a query.
  */
 inline void get_current_file_position(std::unique_ptr<IntervalNode> const & node,
                                       uint32_t const & start,
@@ -312,7 +318,7 @@ inline void get_current_file_position(std::unique_ptr<IntervalNode> const & node
 }
 
 /*!
-   \brief Move the file position along until it points to the correct read.
+   \brief Move the file position along a BAM/SAM file until it points to the first read overlapping a start position.
    \param input The alignment file to use.
    \param start The start of the given query.
    \param file_position The position to move along.
@@ -357,6 +363,7 @@ inline void get_correct_position(seqan3::sam_file_input<traits_type, fields_type
    \param start The start Position of the search.
    \param end The end Position of the search.
    \param file_position The resulting file position.
+   \details The main function for obtaining the file position of an overlap query.
  */
 template <typename traits_type, typename fields_type, typename format_type>
 inline void get_overlap_file_position(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
@@ -405,6 +412,8 @@ inline void get_overlap_file_position(seqan3::sam_file_input<traits_type, fields
                   not write to any file.
 
    \return Returns a vector of seqan3::sam_record objects containing records overlapping the query.
+   \details The main function for obtaining a vector of records which overlap a query. If just the file position is
+            desired, use bamit::get_overlap_file_position instead.
 */
 template <typename traits_type, typename fields_type, typename format_type>
 inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type, format_type> & input,
