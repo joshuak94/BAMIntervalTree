@@ -93,7 +93,7 @@ int parse_overlap_query(bamit::Position & start,
     size_t const end_split = options.end.find(',');
     if (start_split == options.start.size() || end_split == options.start.size())
     {
-        seqan3::debug_stream << "[ERROR] Start and end positions must be in the format chr_name:position!\n";
+        seqan3::debug_stream << "[ERROR] Start and end positions must be in the format chr_name,position!\n";
         return -1;
     }
 
@@ -208,7 +208,10 @@ int parse_overlap(seqan3::argument_parser & parser)
     seqan3::debug_stream << "Searching...\n";
     bamit::Position start, end;
     if (parse_overlap_query(start, end, options, input.header().ref_ids()) == -1) return -1;
-    if (options.verbose) seqan3::debug_stream << "Search: " << start << " " << end << "\n";
+    if (options.verbose) seqan3::debug_stream << "Search: " << input.header().ref_ids()[std::get<0>(start)] << ":"
+                                              << std::get<1>(start) << " through "
+                                              << input.header().ref_ids()[std::get<0>(end)]
+                                              << ":" << std::get<1>(end) << "\n";
     bamit::get_overlap_records(input, node_list, start, end, options.verbose, options.out_file);
 
     return 0;

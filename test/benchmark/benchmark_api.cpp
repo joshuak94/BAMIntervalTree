@@ -102,15 +102,15 @@ TEST(benchmark, construct_and_search)
     auto avg_bit_offset{0us}, avg_bit_overlap{0us}, avg_hts_offset{0us}, avg_hts_overlap{0us};
     // Generate 100 overlaps.
     bamit::Position start, end;
-    std::streampos result{-1};
+    std::streamoff result{-1};
     for (int i = 0; i < 100; i++)
     {
         seqan3::sam_file_input input_bam_write{large_file};
         seqan3::sam_file_input input_bam_offset{large_file};
         get_random_position(start, end, input_bam.header());
-        std::string query{"[" + std::to_string(std::get<0>(start)) + ", " +
+        std::string query{"[" + input_bam.header().ref_ids()[std::get<0>(start)] + ", " +
                                 std::to_string(std::get<1>(start)) + "] - [" +
-                                std::to_string(std::get<0>(end)) + ", " +
+                                input_bam.header().ref_ids()[std::get<0>(end)] + ", " +
                                 std::to_string(std::get<1>(end)) + "]\n"};
         std::filesystem::path result_sam_path = tmp_dir/(std::to_string(i) + "_bit.bam");
         std::filesystem::path result_htslib_path = tmp_dir/(std::to_string(i) + "_hts.bam");
@@ -154,7 +154,7 @@ TEST(benchmark, construct_and_search)
         avg_bit_overlap += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
 
         _m1 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
-        bamit::get_overlap_records(input_bam_offset, node_list, start, end);
+        bamit::get_overlap_file_position(input_bam_offset, node_list, start, end, result);
         _m2 = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
         avg_bit_offset += std::chrono::duration_cast<std::chrono::microseconds>(_m2 - _m1);
 
@@ -175,7 +175,7 @@ TEST(benchmark, construct_and_search)
 
     seqan3::debug_stream << "Average for get_overlap_records: " <<
                             std::to_string((avg_bit_overlap.count())/100) << "\n";
-    seqan3::debug_stream << "Average for get_overlap_file_offset: " <<
+    seqan3::debug_stream << "Average for get_overlap_file_position: " <<
                             std::to_string((avg_bit_offset.count())/100) << "\n";
     seqan3::debug_stream << "Average for htslib_overlap_records: " <<
                             std::to_string((avg_hts_overlap.count())/100) << "\n";

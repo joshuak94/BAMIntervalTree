@@ -368,7 +368,7 @@ inline void get_overlap_file_position(seqan3::sam_file_input<traits_type, fields
     if (std::get<0>(start) == std::get<0>(end)) // Searching in one chromosome.
     {
         get_current_file_position(node_list[std::get<0>(start)], std::get<1>(start), std::get<1>(end), file_position);
-        get_correct_position(input, start, file_position);
+        if (file_position != -1) get_correct_position(input, start, file_position);
     }
     else // Searching across multiple chromosomes.
     {
@@ -436,7 +436,9 @@ inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type,
                               | seqan3::views::to<std::vector>;
     if (results_list.empty() && verbose)
     {
-        seqan3::debug_stream << "No overlapping reads found for query " << start << " - " << end << "\n";
+        seqan3::debug_stream << "No overlapping reads found for query "
+                             << input.header().ref_ids()[std::get<0>(start)] << ":" << std::get<1>(start) << " through "
+                             << input.header().ref_ids()[std::get<0>(end)] << ":" << std::get<1>(end) << "\n";
     }
     if (!outname.empty()) // Outputs an empty file if the list is empty.
     {
