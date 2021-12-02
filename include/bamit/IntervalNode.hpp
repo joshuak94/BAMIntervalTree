@@ -381,12 +381,12 @@ inline void get_overlap_file_position(seqan3::sam_file_input<traits_type, fields
     {
         for (uint32_t i = std::get<0>(start); i < (uint32_t) std::get<0>(end); ++i)
         {
-            // Start at given start only for the first chromosome, otherwise start searching from 0.
+            // Begin at given start only for the first chromosome, otherwise begin searching from 0.
             // For the first chromosome, we want the actual start position of the query. If no reads
             // in the chromosome are in our query, we want to search the tree of the next chromosome
             // starting from the beginning.
             uint32_t start_position = (uint32_t) std::get<0>(start) == i ? (uint32_t) std::get<1>(start) : 0;
-            // End at given end if at the last chromosome, otherwise end at end of chromosome.
+            // Stop at given end if at the last chromosome, otherwise stop at end of chromosome.
             uint32_t end_position = (uint32_t) std::get<0>(end) == i ? (uint32_t) std::get<1>(end) : std::numeric_limits<uint32_t>::max();
             get_current_file_position(node_list[i], start_position, end_position, file_position);
 
