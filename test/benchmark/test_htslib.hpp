@@ -17,13 +17,13 @@ int sam_readrec([[maybe_unused]] BGZF *ignored, void *fpv, void *bv, int *tid, h
 
 int htslib_index(const char * input)
 {
-    return sam_index_build3(input, NULL, 0, std::thread::hardware_concurrency());
+    return sam_index_build3(input, NULL, 0, 2);
 }
 
 void htslib_overlap_file_offset(hts_idx_t * index, sam_hdr_t * header, char ** region, int count)
 {
     hts_itr_t *iter;
-    [[maybe_unused]] iter = sam_itr_regarray(index, header, region, count);
+    iter = sam_itr_regarray(index, header, region, count);
 }
 
 int htslib_overlap_records(hts_idx_t * index, sam_hdr_t * header, char ** region, int count, htsFile * in, htsFile * out)

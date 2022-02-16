@@ -9,7 +9,7 @@
 struct IndexOptions
 {
     std::filesystem::path input_path{};
-    uint16_t threads{0};
+    uint16_t threads{1};
     bool verbose{false};
 };
 
@@ -131,8 +131,14 @@ int parse_overlap_query(bamit::Position & start,
 int run_index(std::vector<std::unique_ptr<bamit::IntervalNode>> & node_list, IndexOptions const & options)
 {
     std::vector<std::vector<bamit::Record>> records{};
-    if (options.threads != 0) seqan3::contrib::bgzf_thread_count = options.threads;
-    seqan3::sam_file_input input_file{options.input_path};
+    seqan3::contrib::bgzf_thread_count = options.threads;
+    seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
+                           seqan3::fields<seqan3::field::ref_id,
+                                          seqan3::field::ref_offset,
+                                          seqan3::field::cigar,
+                                          seqan3::field::flag>,
+                           seqan3::type_list<seqan3::format_bam,
+                                             seqan3::format_sam>> input_file{options.input_path};
 
     seqan3::debug_stream << "Creating Interval Tree.\n";
     node_list = bamit::index(input_file, options.verbose);

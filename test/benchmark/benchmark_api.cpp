@@ -83,7 +83,14 @@ TEST(benchmark, construct_and_search)
         seqan3::debug_stream << "large_file.bam does not exist in the data directory.";
         return;
     }
-    seqan3::sam_file_input input_bam{large_file};
+    seqan3::contrib::bgzf_thread_count = 2;
+    seqan3::sam_file_input<seqan3::sam_file_input_default_traits<>,
+                           seqan3::fields<seqan3::field::ref_id,
+                                          seqan3::field::ref_offset,
+                                          seqan3::field::cigar,
+                                          seqan3::field::flag>,
+                           seqan3::type_list<seqan3::format_bam,
+                                             seqan3::format_sam>> input_bam{large_file};
 
     // Construct tree.
     std::vector<std::unique_ptr<bamit::IntervalNode>> node_list{};
@@ -105,8 +112,20 @@ TEST(benchmark, construct_and_search)
     std::streamoff result{-1};
     for (int i = 0; i < 100; i++)
     {
-        seqan3::sam_file_input input_bam_write{large_file};
-        seqan3::sam_file_input input_bam_offset{large_file};
+        seqan3::sam_file_input <seqan3::sam_file_input_default_traits<>,
+                               seqan3::fields<seqan3::field::ref_id,
+                                              seqan3::field::ref_offset,
+                                              seqan3::field::cigar,
+                                              seqan3::field::flag>,
+                               seqan3::type_list<seqan3::format_bam,
+                                                 seqan3::format_sam>> input_bam_write{large_file};
+        seqan3::sam_file_input <seqan3::sam_file_input_default_traits<>,
+                               seqan3::fields<seqan3::field::ref_id,
+                                              seqan3::field::ref_offset,
+                                              seqan3::field::cigar,
+                                              seqan3::field::flag>,
+                               seqan3::type_list<seqan3::format_bam,
+                                                 seqan3::format_sam>> input_bam_offset{large_file};
         get_random_position(start, end, input_bam.header());
         std::string query{"[" + input_bam.header().ref_ids()[std::get<0>(start)] + ", " +
                                 std::to_string(std::get<1>(start)) + "] - [" +
