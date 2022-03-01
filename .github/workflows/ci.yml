@@ -86,42 +86,6 @@ jobs:
             build_type: Release
             cxx_flags: "-std=c++20"
 
-          - name: "gcc8 on Linux"
-            os: ubuntu-20.04
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-8"
-            cc: "gcc-8"
-            build: unit
-            build_type: Release
-
-          - name: "gcc8 on macOS"
-            os: macos-10.15
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-8"
-            cc: "gcc-8"
-            build: unit
-            build_type: Release
-
-          - name: "gcc7 on Linux"
-            os: ubuntu-20.04
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-7"
-            cc: "gcc-7"
-            build: unit
-            build_type: Release
-
-          - name: "gcc7 on macOS"
-            os: macos-10.15
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-7"
-            cc: "gcc-7"
-            build: unit
-            build_type: Release
-
           - name: "Documentation"
             os: ubuntu-20.04
             requires_toolchain: false
