@@ -75,6 +75,13 @@ void initialize_overlap_parser(seqan3::argument_parser & parser, OverlapOptions 
     parser.add_flag(options.verbose, 'v', "verbose", "Print verbose output.");
 }
 
+void initialize_print_parser(seqan3::argument_parser & parser, IndexOptions & options)
+{
+    parser.add_option(options.input_path, 'i', "input_bit",
+                      "Input a binary interval tree to print.", seqan3::option_spec::required,
+                      seqan3::input_file_validator{{"bam.bit"}});
+}
+
 /*!
    \brief Parse the start and end strings from the given options and put them into the given bamit::Position containers.
    \param start Where the resulting start bamit::Position will go.
@@ -223,11 +230,46 @@ int parse_overlap(seqan3::argument_parser & parser)
     return 0;
 }
 
+int parse_print(seqan3::argument_parser & parser)
+{
+    OverlapOptions options{};
+    std::vector<std::unique_ptr<bamit::IntervalNode>> node_list;
+
+    initialize_print_parser(parser, options);
+
+    // Parse the given arguments and catch possible errors.
+    try
+    {
+      parser.parse();                                                   // trigger command line parsing
+    }
+    catch (seqan3::argument_parser_error const & ext)                   // catch user errors
+    {
+      seqan3::debug_stream << "[Error] " << ext.what() << '\n';         // customise your error message
+      return -1;
+    }
+
+    // For printing force 1 thread.
+    seqan3::contrib::bgzf_thread_count = 1;
+
+    std::filesystem::path index_path{options.input_path};
+    std::ifstream in_file{index_path, std::ios_base::binary | std::ios_base::in};
+    cereal::BinaryInputArchive iarchive(in_file);
+    bamit::read(node_list, iarchive);
+    in_file.close();
+
+    for (const auto & node : node_list)
+    {
+        node->print(0);
+    }
+
+    return 0;
+}
+
 int main(int argc, char ** argv)
 {
     seqan3::argument_parser top_level_parser{"BAMIntervalTree", argc, argv,
                                              seqan3::update_notifications::on,
-                                             {"index", "overlap"}};
+                                             {"index", "overlap", "print"}};
 
     initialize_top_parser(top_level_parser);
 
@@ -245,6 +287,7 @@ int main(int argc, char ** argv)
     seqan3::argument_parser & sub_parser = top_level_parser.get_sub_parser();
     if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-index"}) return parse_index(sub_parser);
     else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-overlap"}) return parse_overlap(sub_parser);
+    else if (sub_parser.info.app_name == std::string_view{"BAMIntervalTree-print"}) return parse_print(sub_parser);
     else seqan3::debug_stream << "Unhandled subparser named " << sub_parser.info.app_name << '\n';
 
     return 0;
