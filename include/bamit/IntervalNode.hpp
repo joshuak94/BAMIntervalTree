@@ -195,7 +195,7 @@ inline void construct_tree(std::unique_ptr<IntervalNode> & node,
                 node->set_file_position(r.file_position);
                 start = r.start;
             }
-            end = r.end;
+            end = r.end > end ? r.end : end;
         }
     }
     node->set_start(start);
@@ -307,12 +307,16 @@ inline void get_current_file_position(std::unique_ptr<IntervalNode> const & node
      * In case 6, do not store the file position and search the right subtree.
     */
     if (end < cur_start)
+    {
         get_current_file_position(node->get_left_node(), start, end, file_position);
+    }
     else if (start > cur_end)
+    {
         get_current_file_position(node->get_right_node(), start, end, file_position);
+    }
     else
     {
-        file_position = node->get_file_position();
+        file_position = file_position == -1 ? node->get_file_position() : std::min(file_position, node->get_file_position());
         get_current_file_position(node->get_left_node(), start, end, file_position);
     }
 }
@@ -438,10 +442,12 @@ inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type,
     // Get the file position of the first record matching start query.
     get_overlap_file_position(input, node_list, start, end, file_position);
 
-    // Store reads which start before the end of the query, filtering out unmapped reads.
+    // Store reads which start before the end of the query, filtering out unmapped reads and reads within the interval which
+    // end before the start. Example: Read 1 goes from 100 - 200, Read 2 goes from 101 - 151. Both in the same node (median 150), but
+    // when searching for interval 160 - 200, Read 2 will not be included in results, as it is outside the query range.
     auto results_list = input | std::views::take_while([file_position](auto & rec) {return file_position != -1;})
                               | std::views::take_while([end](auto & rec) {return std::make_tuple(rec.reference_id().value(), rec.reference_position().value()) < end;})
-                              | std::views::filter([](auto & rec) {return !unmapped(rec);})
+                              | std::views::filter([start](auto & rec) {return !unmapped(rec) && std::make_tuple(rec.reference_id().value(), get_length((rec).cigar_sequence()) + rec.reference_position().value()) >= start;})
                               | seqan3::views::to<std::vector>;
     if (results_list.empty() && verbose)
     {
