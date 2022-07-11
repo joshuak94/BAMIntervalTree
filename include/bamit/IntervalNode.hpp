@@ -448,7 +448,7 @@ inline auto get_overlap_records(seqan3::sam_file_input<traits_type, fields_type,
     auto results_list = input | std::views::take_while([file_position](auto & rec) {return file_position != -1;})
                               | std::views::take_while([end](auto & rec) {return std::make_tuple(rec.reference_id().value(), rec.reference_position().value()) < end;})
                               | std::views::filter([start](auto & rec) {return !unmapped(rec) && std::make_tuple(rec.reference_id().value(), get_length((rec).cigar_sequence()) + rec.reference_position().value()) >= start;})
-                              | seqan3::views::to<std::vector>;
+                              | seqan3::ranges::to<std::vector>();
     if (results_list.empty() && verbose)
     {
         seqan3::debug_stream << "No overlapping reads found for query "
