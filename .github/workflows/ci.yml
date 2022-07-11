@@ -26,26 +26,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "gcc9 (c++2a) on Linux"
-            os: ubuntu-20.04
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-9"
-            cc: "gcc-9"
-            build: unit
-            build_type: Release
-            cxx_flags: "-std=c++2a"
-
-          - name: "gcc9 (c++2a) on macOS"
-            os: macos-10.15
-            requires_toolchain: true
-            requires_ccache: true
-            cxx: "g++-9"
-            cc: "gcc-9"
-            build: unit
-            build_type: Release
-            cxx_flags: "-std=c++2a"
-
           - name: "gcc10 (c++17) on Linux"
             os: ubuntu-20.04
             requires_toolchain: true
@@ -86,9 +66,31 @@ jobs:
             build_type: Release
             cxx_flags: "-std=c++20"
 
+          - name: "gcc11 (c++20) on Linux"
+            os: ubuntu-20.04
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-11"
+            cc: "gcc-11"
+            build: unit
+            build_type: Release
+            cxx_flags: "-std=c++20"
+
+          - name: "gcc11 (c++20) on macOS"
+            os: macos-10.15
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-11"
+            cc: "gcc-11"
+            build: unit
+            build_type: Release
+            cxx_flags: "-std=c++20"
+
           - name: "Documentation"
             os: ubuntu-20.04
             requires_toolchain: false
+            cxx: "g++-10"
+            cc: "gcc-10"
             requires_ccache: false
             build: documentation
 
